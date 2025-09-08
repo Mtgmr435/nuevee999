@@ -213,14 +213,18 @@ function LevelComponent({
   userData: UserData
   onLoseLife: () => void
 }) {
-  const [currentStep, setCurrentStep] = useState(0)
+  // --- ESTADO PRINCIPAL ---
+  // Pasadas: 'first' (primera vuelta) y 'retry' (revisión de falladas)
+  const [pass, setPass] = useState<"first" | "retry">("first")
+  const [currentIndex, setCurrentIndex] = useState(0)        // índice de la pasada actual
+  const [retryQueue, setRetryQueue] = useState<number[]>([]) // índices de preguntas falladas
+  const [retryPos, setRetryPos] = useState(0)                // puntero dentro de retryQueue
+
   const [score, setScore] = useState(0)
   const [selectedOption, setSelectedOption] = useState<number | null>(null)
   const [showFeedback, setShowFeedback] = useState(false)
-  const [wrongAnswers, setWrongAnswers] = useState<number[]>([]) // Track wrong answers to retry
-  const [hintUsed, setHintUsed] = useState(false) // Track if hint was used
-  const [isCorrect, setIsCorrect] = useState(false) // Track if answer was correct for feedback color
-
+  const [isCorrect, setIsCorrect] = useState<boolean | null>(null)
+  const [hintUsed, setHintUsed] = useState(false)
   // Level content data with complete content from the attachment
   const levelData = {
     1: {
@@ -592,60 +596,124 @@ function LevelComponent({
   }
 
   const currentLevelData = levelData[levelId as keyof typeof levelData]
-  const currentStepData = currentLevelData?.steps[currentStep]
   const currentPet = pets.find((p) => p.id === userData.currentPet)
 
   if (!currentLevelData) {
     return (
-      <div className="text-center py-20">
-        <h2 className="text-2xl font-bold mb-4">Nivel en construcción</h2>
+      <div className="max-w-4xl mx-auto p-6 text-center">
+        <h2 className="text-2xl font-bold mb-4">Nivel en Desarrollo</h2>
         <p className="text-muted-foreground mb-4">Este nivel estará disponible pronto.</p>
         <Button onClick={onBack}>Volver al curso</Button>
       </div>
     )
   }
 
+    // Normalizamos: todo lo que no sea 'roleplay' lo tratamos como 'quiz'
+  const levelKind: "roleplay" | "quiz" = currentLevelData.type === "roleplay" ? "roleplay" : "quiz"
+
+  // Resolvemos qué índice de paso mostrar según la pasada
+  const stepIndex = pass === "first" ? currentIndex : retryQueue[retryPos]
+  const currentStepData = currentLevelData.steps[stepIndex]
+
+  const pushWrongOnce = (idx: number) => {
+    setRetryQueue((prev) => (prev.includes(idx) ? prev : [...prev, idx]))
+  }
+
+  const resetForNext = () => {
+    setSelectedOption(null)
+    setShowFeedback(false)
+    setIsCorrect(null)
+    setHintUsed(false)
+  }
+
   const handleOptionSelect = (optionIndex: number) => {
     setSelectedOption(optionIndex)
     const option = currentStepData.options[optionIndex]
 
+    if (levelKind === "roleplay") {
+      // Roleplay: reintento inmediato hasta acertar
+      if (option.correct) {
+       setScore(score + option.points)
+  setIsCorrect(true)
+} else {
+  setIsCorrect(false)
+  onLoseLife() // pierdes 1 vida, pero NO se agrega a ninguna cola
+}
+setShowFeedback(true)
+      return
+    }
+
+    // Quiz: si fallas, se agenda para el final; igual mostramos feedback
     if (option.correct) {
-      setScore(score + option.points)
-      setIsCorrect(true) // Track correct answer for green feedback
+      setScore((s) => s + option.points)
+      setIsCorrect(true)
     } else {
-      setIsCorrect(false) // Track incorrect answer for red feedback
-      setWrongAnswers([...wrongAnswers, currentStep]) // Add to retry list
-      onLoseLife() // Lose a life for wrong answer
+      pushWrongOnce(stepIndex)
+      setIsCorrect(false)
+      onLoseLife()
     }
     setShowFeedback(true)
   }
 
-  const handleNext = () => {
-    if (currentStep < currentLevelData.steps.length - 1) {
-      setCurrentStep(currentStep + 1)
-      setSelectedOption(null)
-      setShowFeedback(false)
-      setHintUsed(false) // Reset hint for next question
+  const goToNextInFirstPass = () => {
+    if (currentIndex < currentLevelData.steps.length - 1) {
+      setCurrentIndex((i) => i + 1)
+      resetForNext()
     } else {
-      // Check if need to retry wrong answers
-      if (wrongAnswers.length > 0) {
-        // Go to first wrong answer to retry
-        setCurrentStep(wrongAnswers[0])
-        setWrongAnswers(wrongAnswers.slice(1))
-        setSelectedOption(null)
-        setShowFeedback(false)
-        setHintUsed(false)
+      // Terminó primera pasada
+      if (retryQueue.length > 0) {
+        setPass("retry")
+        setRetryPos(0)
+        resetForNext()
       } else {
-        // Level completed
         onComplete(currentLevelData.xpReward, currentLevelData.coinReward)
       }
     }
   }
 
-  const showHint = () => {
-    if (!hintUsed) {
-      setHintUsed(true)
+  const goToNextInRetryPass = () => {
+    if (retryPos < retryQueue.length - 1) {
+      setRetryPos((p) => p + 1)
+      resetForNext()
+    } else {
+      onComplete(currentLevelData.xpReward, currentLevelData.coinReward)
     }
+  }
+
+  const handleNext = () => {
+    if (levelKind === "roleplay") {
+      // Roleplay: solo avanzamos si acertó; si falló, reintenta en el acto
+      if (isCorrect) {
+        if (pass === "first") {
+          goToNextInFirstPass()
+        } else {
+          // En retry de roleplay (poco común), también avanzamos sólo si acertó
+          goToNextInRetryPass()
+        }
+      } else {
+        // reintento inmediato
+        resetForNext()
+      }
+      return
+    }
+
+    // Quiz:
+    if (pass === "first") {
+      // En la primera pasada SIEMPRE avanzamos (haya sido correcto o no)
+      goToNextInFirstPass()
+    } else {
+      // En la pasada de retry, nos quedamos en la misma hasta que acierte
+      if (isCorrect) {
+        goToNextInRetryPass()
+      } else {
+        // reintenta esta misma fallada
+        resetForNext()
+      }
+    }
+  }
+
+  const showHint = () => {
+    if (!hintUsed) setHintUsed(true)
   }
 
   return (
@@ -682,15 +750,15 @@ function LevelComponent({
             <div className="flex justify-between text-sm text-amber-700 mb-2">
               <span>Progreso</span>
               <span>
-                {currentStep + 1} de {currentLevelData.steps.length}
-                {wrongAnswers.length > 0 && ` (${wrongAnswers.length} por repetir)`}
+                {stepIndex + 1} de {currentLevelData.steps.length}
+                {retryQueue.length > 0 && ` (${retryQueue.length} por repetir)`}
               </span>
             </div>
-            <Progress value={((currentStep + 1) / currentLevelData.steps.length) * 100} />
+            <Progress value={((stepIndex + 1) / currentLevelData.steps.length) * 100} />
           </div>
 
           {/* Story intro (only on first step) */}
-          {currentStep === 0 && (
+          {stepIndex === 0 && (
             <div className="mb-6 p-4 bg-amber-50 rounded-lg border border-amber-200">
               <p className="text-amber-800">{currentLevelData.story}</p>
             </div>
@@ -772,14 +840,13 @@ function LevelComponent({
                 <div className="text-sm text-amber-600">
                   Puntos ganados: +{currentStepData.options[selectedOption!].points}
                 </div>
-                <Button
-                  onClick={handleNext}
-                  className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700"
-                >
-                  {currentStep < currentLevelData.steps.length - 1 || wrongAnswers.length > 0
-                    ? "Continuar"
-                    : "Completar Nivel"}
-                </Button>
+                <Button onClick={handleNext}>
+  {pass === "first"
+    ? (stepIndex < currentLevelData.steps.length - 1
+        ? "Siguiente"
+        : (retryQueue.length > 0 ? "Repasar falladas" : "Completar nivel"))
+    : (retryPos < retryQueue.length - 1 ? "Siguiente (repaso)" : "Completar nivel")}
+</Button>
               </div>
             </div>
           )}

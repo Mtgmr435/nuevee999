@@ -14,15 +14,11 @@ export default function LevelPage({ params }: LevelPageProps) {
   const levelId = Number.parseInt(params.id)
 
   // Determinar el tipo de nivel basado en el ID
-  const getLevelType = (id: number) => {
-    if (id === 1) return "roleplay"
-    if (id === 2) return "quiz"
-    if (id === 3) return "video"
-    if (id === 4) return "story"
-    if (id === 5) return "interactive"
-    return "roleplay"
-  }
-
+// app/level/[id]/page.tsx
+const getLevelType = (id: number) => {
+  if (id === 1) return "roleplay"
+  return "quiz" // el resto como quiz
+}
   const levelType = getLevelType(levelId)
 
   const handleComplete = (score: number, badges: string[]) => {

@@ -94,77 +94,86 @@ export default function AssessmentEngine({ level, userData, onComplete, onBack, 
     const option = currentItem.options[optionIndex]
     const isFirstTry = !attemptedItems.has(currentItem.id)
 
-    if (option.correct) {
-      const points = isFirstTry ? option.points + 25 : option.points // First-try bonus
-      setScore((prev) => prev + points)
-
-      if (isFirstTry) {
-        setFirstTryCorrect((prev) => prev + 1)
-      }
-
-      if (isRetryRound) {
-        // Remove from retry queue
-        setRetryQueue((prev) => prev.filter((item) => item.id !== currentItem.id))
+  if (option.correct) {
+  const points = isFirstTry ? option.points + 25 : option.points
+  setScore((prev) => prev + points)
+  if (isFirstTry) setFirstTryCorrect((prev) => prev + 1)
+  if (isRetryRound) {
+    setRetryQueue((prev) => prev.filter((item) => item.id !== currentItem.id))
       }
     } else {
-      setMistakes((prev) => prev + 1)
-      setScore((prev) => prev - 50) // Penalty for wrong answer
-      onLoseLife()
-      setAttemptedItems((prev) => new Set(prev).add(currentItem.id))
+     setMistakes((prev) => prev + 1)
+    setScore((prev) => prev - 50)
+    onLoseLife()
+    setAttemptedItems((prev) => new Set(prev).add(currentItem.id))
 
-      if (!level.hasContinuity && !isRetryRound) {
-        // Add to retry queue for quiz levels
-        setRetryQueue((prev) => [...prev, currentItem])
-      }
-    }
-
+// NUEVO: la decisión ahora depende del tipo
+  if (level.type === "quiz" && !isRetryRound) {
+    // en quiz, solo se encola para reintentar al final
+    setRetryQueue((prev) => (prev.find(i => i.id === currentItem.id) ? prev : [...prev, currentItem]))
+  }
+}
     setShowFeedback(true)
   }
 
-  const handleNext = () => {
-    const option = currentItem.options[selectedOption!]
+  // components/AssessmentEngine.tsx
+const handleNext = () => {
+  const option = currentItem.options[selectedOption!]
 
-    if (level.hasContinuity) {
-      // Continuity flow: always advance regardless of correctness
+  if (option.correct) {
+    // avanzar normal (igual que antes)
+    if (!isRetryRound) {
       if (currentIndex < currentItems.length - 1) {
         setCurrentIndex((prev) => prev + 1)
         resetForNextItem()
       } else {
-        completeAssessment()
+        // primera pasada completa
+        if (retryQueue.length > 0) {
+          setIsRetryRound(true)
+          setCurrentIndex(0)
+          resetForNextItem()
+        } else {
+          completeAssessment()
+        }
       }
     } else {
-      // Quiz flow: advance only if correct, or handle retry logic
-      if (option.correct) {
-        if (isRetryRound) {
-          // In retry round, check if queue is empty
-          if (retryQueue.filter((item) => item.id !== currentItem.id).length === 0) {
-            completeAssessment()
-          } else {
-            setCurrentIndex(0) // Reset to first item in retry queue
-            resetForNextItem()
-          }
+      // en retry round
+      const remaining = retryQueue.filter((item) => item.id !== currentItem.id)
+      if (remaining.length === 0) {
+        completeAssessment()
+      } else {
+        setCurrentIndex(0)
+        resetForNextItem()
+      }
+    }
+  } else {
+    // INCORRECTA
+    if (level.type === "roleplay") {
+      // reintento inmediato: quedarse en la misma
+      resetForNextItem()
+    } else {
+      // quiz: avanzar a la siguiente pregunta
+      if (!isRetryRound) {
+        if (currentIndex < currentItems.length - 1) {
+          setCurrentIndex((prev) => prev + 1)
+          resetForNextItem()
         } else {
-          // First pass: advance to next item
-          if (currentIndex < currentItems.length - 1) {
-            setCurrentIndex((prev) => prev + 1)
+          // terminó primera pasada => iniciar retry round si hay cola
+          if (retryQueue.length > 0) {
+            setIsRetryRound(true)
+            setCurrentIndex(0)
             resetForNextItem()
           } else {
-            // First pass complete, check if retry round needed
-            if (retryQueue.length > 0) {
-              setIsRetryRound(true)
-              setCurrentIndex(0)
-              resetForNextItem()
-            } else {
-              completeAssessment()
-            }
+            completeAssessment()
           }
         }
       } else {
-        // Wrong answer: stay on same item for immediate retry
+        // en retry round, si falla, quedarse para reintento inmediato hasta acertar
         resetForNextItem()
       }
     }
   }
+}
 
   const resetForNextItem = () => {
     setSelectedOption(null)

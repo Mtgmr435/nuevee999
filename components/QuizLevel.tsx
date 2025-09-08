@@ -118,51 +118,87 @@ export default function QuizLevel({ levelId, onComplete, onExit }: QuizLevelProp
   const [score, setScore] = useState(0)
   const [correctAnswers, setCorrectAnswers] = useState(0)
   const [answers, setAnswers] = useState<number[]>([])
+  const [retryQueue, setRetryQueue] = useState<number[]>([])
+const [isRetryRound, setIsRetryRound] = useState(false)
+const [wrongQueue, setWrongQueue] = useState<number[]>([])
+const [mode, setMode] = useState<"first" | "review">("first")
+const [reviewPos, setReviewPos] = useState(0)
 
-  const question = quizQuestions[currentQuestion]
-  const isLastQuestion = currentQuestion === quizQuestions.length - 1
-
+  const getIndex = () => (mode === "first" ? currentQuestion : wrongQueue[reviewPos])
+const question = quizQuestions[getIndex()]
+const isLastInFirstPass = currentQuestion === quizQuestions.length - 1
+  
   const handleAnswerSelect = (answerIndex: number) => {
-    setSelectedAnswer(answerIndex)
-  }
+  setSelectedAnswer(answerIndex)
+}
 
-  const handleNextQuestion = () => {
-    if (selectedAnswer === null) return
+const handleNextQuestion = () => {
+  if (selectedAnswer === null) return
 
     const isCorrect = selectedAnswer === question.correctAnswer
-    const newAnswers = [...answers, selectedAnswer]
-    setAnswers(newAnswers)
 
-    if (isCorrect) {
-      setScore(score + question.points)
-      setCorrectAnswers(correctAnswers + 1)
-    }
 
-    setShowResult(true)
+ // sumatoria y conteo se mantienen como ya los tenías
+  if (isCorrect) {
+    setScore((s) => s + question.points)
+    setCorrectAnswers((c) => c + 1)
+  } else if (mode === "first") {
+    // Agendar para revisión solo en primera pasada
+    setWrongQueue((prev) => (prev.includes(getIndex()) ? prev : [...prev, getIndex()]))
+  }
 
-    setTimeout(() => {
-      if (isLastQuestion) {
-        const finalScore = isCorrect ? score + question.points : score
-        const badges = []
+  setShowResult(true)
 
-        if (correctAnswers + (isCorrect ? 1 : 0) === quizQuestions.length) {
-          badges.push("Perfeccionista")
+  setTimeout(() => {
+    if (mode === "first") {
+      if (isLastInFirstPass) {
+        if (wrongQueue.length > 0 || !isCorrect) {
+          // Si hay falladas, pasamos a review
+          const finalQueue = isCorrect ? wrongQueue : [...wrongQueue, getIndex()]
+          setWrongQueue(Array.from(new Set(finalQueue)))
+          setMode("review")
+          setReviewPos(0)
+          setSelectedAnswer(null)
+          setShowResult(false)
+        } else {
+          // Perfecto sin fallos → completar
+          const finalScore = isCorrect ? score + question.points : score
+          const badges: string[] = []
+          if (correctAnswers + (isCorrect ? 1 : 0) === quizQuestions.length) badges.push("Perfeccionista")
+          if (finalScore >= 120) badges.push("Experto en Comunicación")
+          if (correctAnswers + (isCorrect ? 1 : 0) >= 5) badges.push("Conocedor")
+          onComplete(finalScore, badges)
         }
-        if (finalScore >= 120) {
-          badges.push("Experto en Comunicación")
-        }
-        if (correctAnswers + (isCorrect ? 1 : 0) >= 5) {
-          badges.push("Conocedor")
-        }
-
-        onComplete(finalScore, badges)
       } else {
-        setCurrentQuestion(currentQuestion + 1)
+        // primera pasada sigue
+        setCurrentQuestion((q) => q + 1)
         setSelectedAnswer(null)
         setShowResult(false)
       }
-    }, 3000)
-  }
+    } else {
+      // REVIEW: quedarse hasta acertar
+      if (isCorrect) {
+        if (reviewPos < wrongQueue.length - 1) {
+          setReviewPos((p) => p + 1)
+          setSelectedAnswer(null)
+          setShowResult(false)
+        } else {
+          // fin del repaso
+          const finalScore = score + question.points // si acertó sumó
+          const badges: string[] = []
+          if (correctAnswers + 1 === quizQuestions.length) badges.push("Perfeccionista")
+          if (finalScore >= 120) badges.push("Experto en Comunicación")
+          if (correctAnswers + 1 >= 5) badges.push("Conocedor")
+          onComplete(finalScore, badges)
+        }
+      } else {
+        // sigue en la misma hasta acertar
+        setSelectedAnswer(null)
+        setShowResult(false)
+      }
+    }
+  }, 1200) // puedes dejar 3000 si prefieres
+}
 
   const getScorePercentage = () => {
     const maxScore = quizQuestions.reduce((sum, q) => sum + q.points, 0)

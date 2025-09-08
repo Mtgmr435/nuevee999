@@ -13,6 +13,17 @@ interface LevelComponentProps {
   onBack: () => void
   onLoseLife: () => void
 }
+// Tipos/constantes de mascotas (NO toques tu lógica)
+export const PETS = {
+  "baby-capybara":  { icon: "🍼🦫", name: "Bebé capibara" },
+  "adult-capybara": { icon: "🦫",   name: "Capibara adulta" },
+  "golden-capybara":{ icon: "✨🦫", name: "Capibara dorada" },
+} as const
+
+export type PetKey = keyof typeof PETS
+
+const toPetKey = (k: unknown): PetKey =>
+  typeof k === "string" && k in PETS ? (k as PetKey) : "baby-capybara"
 
 export default function LevelComponent({ levelId, userData, onComplete, onBack, onLoseLife }: LevelComponentProps) {
   const [currentStep, setCurrentStep] = useState(0)
@@ -24,13 +35,17 @@ export default function LevelComponent({ levelId, userData, onComplete, onBack, 
   const [correctOnFirstTry, setCorrectOnFirstTry] = useState(0)
   const [attemptedQuestions, setAttemptedQuestions] = useState<Set<number>>(new Set())
 
+
+
+ const equippedPetKey: PetKey = toPetKey(userData?.equippedPet)
+  const equippedPetMeta = PETS[equippedPetKey]
   const currentPet = userData.unlockedPets.find((petId: string) => petId === userData.currentPet)
   const petData = {
     "baby-capybara": { icon: "🐹", name: "Capi Bebé" },
     "adult-capybara": { icon: "🦫", name: "Capi Adulto" },
     "golden-capybara": { icon: "✨🦫", name: "Capi Dorado" },
     "ninja-capybara": { icon: "🥷🦫", name: "Capi Ninja" },
-  }[userData.currentPet] || { icon: "🐹", name: "Capi Bebé" }
+  }[equippedPetKey] || { icon: "🐹", name: "Capi Bebé" }
 
   const levelBackgrounds = {
     1: "/assets/worlds/campamento.png",
