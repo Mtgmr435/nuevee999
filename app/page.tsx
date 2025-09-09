@@ -1,5 +1,7 @@
 "use client"
 
+import RoleplayLevel from "@/components/RoleplayLevel"
+import QuizLevel from "@/components/QuizLevel"
 import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -147,7 +149,7 @@ const communicationLevels: Level[] = [
   {
     id: 2,
     title: "Escucha Activa",
-    type: "interactive",
+    type: "quiz",
     duration: 6,
     xpReward: 40,
     coinReward: 15,
@@ -156,7 +158,7 @@ const communicationLevels: Level[] = [
   },
   {
     id: 3,
-    title: "Lenguaje Corporal",
+    title: "quiz",
     type: "video",
     duration: 10,
     xpReward: 60,
@@ -167,7 +169,7 @@ const communicationLevels: Level[] = [
   {
     id: 4,
     title: "Manejo de Conflictos",
-    type: "story",
+    type: "quiz",
     duration: 12,
     xpReward: 80,
     coinReward: 30,
@@ -219,6 +221,8 @@ function LevelComponent({
   const [currentIndex, setCurrentIndex] = useState(0)        // índice de la pasada actual
   const [retryQueue, setRetryQueue] = useState<number[]>([]) // índices de preguntas falladas
   const [retryPos, setRetryPos] = useState(0)                // puntero dentro de retryQueue
+// estado nuevo
+const [isFixing, setIsFixing] = useState(false)
 
   const [score, setScore] = useState(0)
   const [selectedOption, setSelectedOption] = useState<number | null>(null)
@@ -620,6 +624,7 @@ function LevelComponent({
   }
 
   const resetForNext = () => {
+    setIsFixing(false)
     setSelectedOption(null)
     setShowFeedback(false)
     setIsCorrect(null)
@@ -632,12 +637,14 @@ function LevelComponent({
 
     if (levelKind === "roleplay") {
       // Roleplay: reintento inmediato hasta acertar
-      if (option.correct) {
-       setScore(score + option.points)
+     if (option.correct) {
+  setScore((s) => s + option.points)
   setIsCorrect(true)
+  setIsFixing(false)
 } else {
   setIsCorrect(false)
-  onLoseLife() // pierdes 1 vida, pero NO se agrega a ninguna cola
+  onLoseLife()
+  setIsFixing(true)   // ← estamos corrigiendo esta misma
 }
 setShowFeedback(true)
       return
@@ -750,9 +757,12 @@ setShowFeedback(true)
             <div className="flex justify-between text-sm text-amber-700 mb-2">
               <span>Progreso</span>
               <span>
-                {stepIndex + 1} de {currentLevelData.steps.length}
-                {retryQueue.length > 0 && ` (${retryQueue.length} por repetir)`}
-              </span>
+  {pass === "retry"
+    ? "Repitiendo preguntas"
+    : `${stepIndex + 1} de ${currentLevelData.steps.length}${
+        retryQueue.length > 0 ? ` (${retryQueue.length} por repetir)` : ""
+      }`}
+</span>
             </div>
             <Progress value={((stepIndex + 1) / currentLevelData.steps.length) * 100} />
           </div>
@@ -819,11 +829,12 @@ setShowFeedback(true)
           )}
 
           {showFeedback && (
-            <div className="space-y-4">
+            <div className="mt-4">
               <div
-                className={`p-4 rounded-lg border-2 ${isCorrect ? "bg-green-50 border-green-300" : "bg-red-50 border-red-300"
-                  }`}
-              >
+  className={`p-4 rounded-lg border-2 ${
+    isCorrect ? "bg-green-500/20 border-green-400/50" : "bg-red-500/20 border-red-400/50"
+  }`}
+>
                 <div className="flex items-center gap-2 mb-2">
                   <div className={`text-2xl ${isCorrect ? "animate-bounce" : ""}`}>{isCorrect ? "✅" : "❌"}</div>
                   <span className={`font-semibold ${isCorrect ? "text-green-800" : "text-red-800"}`}>
@@ -840,13 +851,24 @@ setShowFeedback(true)
                 <div className="text-sm text-amber-600">
                   Puntos ganados: +{currentStepData.options[selectedOption!].points}
                 </div>
-                <Button onClick={handleNext}>
-  {pass === "first"
-    ? (stepIndex < currentLevelData.steps.length - 1
-        ? "Siguiente"
-        : (retryQueue.length > 0 ? "Repasar falladas" : "Completar nivel"))
-    : (retryPos < retryQueue.length - 1 ? "Siguiente (repaso)" : "Completar nivel")}
+                <Button
+  onClick={handleNext}
+  className={`mt-2 px-6 py-2 text-white font-semibold rounded-lg ${
+    isCorrect
+      ? "bg-green-500 hover:bg-green-600"
+      : "bg-red-500 hover:bg-red-600"
+  }`}
+>
+  {isCorrect
+    ? (pass === "first"
+        ? (stepIndex < currentLevelData.steps.length - 1
+            ? "Siguiente"
+            : (retryQueue.length > 0 ? "Repasar falladas" : "Completar nivel"))
+        : (retryPos < retryQueue.length - 1 ? "Siguiente (repaso)" : "Completar nivel"))
+    : "Reintentar"}
 </Button>
+
+
               </div>
             </div>
           )}
@@ -1183,19 +1205,18 @@ export default function Nu9veAcademy() {
   )
 
   const renderDashboard = () => (
-    <div className="min-h-screen relative overflow-hidden">
-      <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{
-          backgroundImage: `url('/jungle-adventure-background.jpg')`,
-          filter: "brightness(0.7)",
-        }}
-      ></div>
-      <div className="absolute inset-0 bg-gradient-to-br from-amber-900/20 via-orange-900/10 to-yellow-900/20"></div>
+    <div
+  className="relative min-h-screen bg-cover bg-center bg-no-repeat"
+  style={{
+    backgroundImage: `url('/jungle-adventure-background.jpg')`, // o tu foto
+  }}
+>
+   <div className="relative z-10 p-6 space-y-6"></div>
+      
 
       <div className="relative z-10 p-6">
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-6 bg-white/95 backdrop-blur-md rounded-2xl p-6 shadow-lg border border-white/20">
+          <div className="flex items-center justify-between mb-6 bg-white/95 backdrop-blur-md rounded-2xl p-6 shadow-lg border border-white/30">
             <div className="flex items-center gap-4">
               <div className="text-5xl animate-bounce">
                 {petData[userData.currentPet as keyof typeof petData]?.icon || "🐹"}
@@ -1232,7 +1253,7 @@ export default function Nu9veAcademy() {
             </div>
           </div>
 
-          <div className="mb-8 bg-white/90 backdrop-blur-md rounded-2xl p-4 shadow-lg border border-white/20">
+          <div className="mb-8 bg-white/25 backdrop-blur-md rounded-2xl p-4 shadow-lg border border-white/20">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-bold text-amber-800">Progreso General</h2>
               <div className="text-sm text-amber-600">{userData.completedLevels.length} niveles completados</div>
@@ -1436,6 +1457,7 @@ export default function Nu9veAcademy() {
             {communicationLevels.map((level, index) => {
               const isUnlocked = index === 0 || userData.completedLevels.includes(index)
               const isCompleted = userData.completedLevels.includes(level.id)
+              const displayType = level.type === "roleplay" ? "roleplay" : "quiz"
 
               return (
                 <Card
@@ -1478,9 +1500,9 @@ export default function Nu9veAcademy() {
                             <span>⏱️ {level.duration} min</span>
                             <span>⭐ {level.xpReward} XP</span>
                             <span>🪙 {level.coinReward} monedas</span>
-                            <Badge variant="outline" className="border-amber-300 text-amber-700">
-                              {level.type}
-                            </Badge>
+                          <Badge variant="secondary" className="lowercase">
+    {displayType}
+    </Badge>
                           </div>
                           <p className="text-sm text-amber-600 mt-2">
                             {level.id === 1 && "Aprende a hacer una primera impresión positiva"}

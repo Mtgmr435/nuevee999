@@ -127,6 +127,10 @@ const [reviewPos, setReviewPos] = useState(0)
   const getIndex = () => (mode === "first" ? currentQuestion : wrongQueue[reviewPos])
 const question = quizQuestions[getIndex()]
 const isLastInFirstPass = currentQuestion === quizQuestions.length - 1
+const isLastQuestion =
+  mode === "first"
+    ? currentQuestion === quizQuestions.length - 1
+    : reviewPos === wrongQueue.length - 1
   
   const handleAnswerSelect = (answerIndex: number) => {
   setSelectedAnswer(answerIndex)

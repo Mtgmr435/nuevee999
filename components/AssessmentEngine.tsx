@@ -60,6 +60,7 @@ export default function AssessmentEngine({ level, userData, onComplete, onBack, 
   const [startTime] = useState(Date.now())
   const [attemptedItems, setAttemptedItems] = useState<Set<string>>(new Set())
   const [shuffledItems, setShuffledItems] = useState<AssessmentItem[]>([])
+  const isRoleplay = level.type === "roleplay"
 
   const petDataMap: Record<"baby-capybara" | "adult-capybara" | "golden-capybara" | "ninja-capybara", { icon: string; name: string }> = {
     "baby-capybara": { icon: "🐹", name: "Capi Bebé" },
@@ -90,87 +91,81 @@ export default function AssessmentEngine({ level, userData, onComplete, onBack, 
   }
 
   const handleOptionSelect = (optionIndex: number) => {
-    setSelectedOption(optionIndex)
-    const option = currentItem.options[optionIndex]
-    const isFirstTry = !attemptedItems.has(currentItem.id)
+  setSelectedOption(optionIndex)
+  const option = currentItem.options[optionIndex]
+  const isFirstTry = !attemptedItems.has(currentItem.id)
 
   if (option.correct) {
-  const points = isFirstTry ? option.points + 25 : option.points
-  setScore((prev) => prev + points)
-  if (isFirstTry) setFirstTryCorrect((prev) => prev + 1)
-  if (isRetryRound) {
-    setRetryQueue((prev) => prev.filter((item) => item.id !== currentItem.id))
-      }
-    } else {
-     setMistakes((prev) => prev + 1)
+    const points = isFirstTry ? option.points + 25 : option.points
+    setScore((prev) => prev + points)
+    if (isFirstTry) setFirstTryCorrect((prev) => prev + 1)
+    if (isRetryRound) {
+      // Saca del retryQueue si era de revisión
+      setRetryQueue((prev) => prev.filter((item) => item.id !== currentItem.id))
+    }
+  } else {
+    setMistakes((prev) => prev + 1)
     setScore((prev) => prev - 50)
     onLoseLife()
     setAttemptedItems((prev) => new Set(prev).add(currentItem.id))
 
-// NUEVO: la decisión ahora depende del tipo
-  if (level.type === "quiz" && !isRetryRound) {
-    // en quiz, solo se encola para reintentar al final
-    setRetryQueue((prev) => (prev.find(i => i.id === currentItem.id) ? prev : [...prev, currentItem]))
-  }
-}
-    setShowFeedback(true)
+    // SOLO los quizzes se revisan al final
+    if (!isRoleplay && !isRetryRound) {
+      setRetryQueue((prev) => prev.find((i) => i.id === currentItem.id) ? prev : [...prev, currentItem])
+    }
   }
 
-  // components/AssessmentEngine.tsx
+  setShowFeedback(true)
+}
+
+// Reemplaza handleNext:
 const handleNext = () => {
   const option = currentItem.options[selectedOption!]
 
-  if (option.correct) {
-    // avanzar normal (igual que antes)
-    if (!isRetryRound) {
+  if (isRoleplay) {
+    // Roleplay: reintento inmediato hasta acertar
+    if (option.correct) {
       if (currentIndex < currentItems.length - 1) {
         setCurrentIndex((prev) => prev + 1)
         resetForNextItem()
       } else {
-        // primera pasada completa
-        if (retryQueue.length > 0) {
-          setIsRetryRound(true)
-          setCurrentIndex(0)
-          resetForNextItem()
-        } else {
-          completeAssessment()
-        }
+        completeAssessment()
       }
     } else {
-      // en retry round
-      const remaining = retryQueue.filter((item) => item.id !== currentItem.id)
-      if (remaining.length === 0) {
-        completeAssessment()
-      } else {
+      // Reintentar esta misma
+      resetForNextItem()
+    }
+    return
+  }
+
+  // Quiz:
+  if (!isRetryRound) {
+    // Primera pasada: AVANZAR SIEMPRE, haya sido correcto o no
+    if (currentIndex < currentItems.length - 1) {
+      setCurrentIndex((prev) => prev + 1)
+      resetForNextItem()
+    } else {
+      // Primera pasada terminada → ver si hay revisión
+      if (retryQueue.length > 0) {
+        setIsRetryRound(true)
         setCurrentIndex(0)
         resetForNextItem()
+      } else {
+        completeAssessment()
       }
     }
   } else {
-    // INCORRECTA
-    if (level.type === "roleplay") {
-      // reintento inmediato: quedarse en la misma
-      resetForNextItem()
-    } else {
-      // quiz: avanzar a la siguiente pregunta
-      if (!isRetryRound) {
-        if (currentIndex < currentItems.length - 1) {
-          setCurrentIndex((prev) => prev + 1)
-          resetForNextItem()
-        } else {
-          // terminó primera pasada => iniciar retry round si hay cola
-          if (retryQueue.length > 0) {
-            setIsRetryRound(true)
-            setCurrentIndex(0)
-            resetForNextItem()
-          } else {
-            completeAssessment()
-          }
-        }
+    // En revisión: quedarse hasta acertar
+    if (option.correct) {
+      if (retryQueue.filter((item) => item.id !== currentItem.id).length === 0) {
+        completeAssessment()
       } else {
-        // en retry round, si falla, quedarse para reintento inmediato hasta acertar
+        setCurrentIndex(0) // volvemos al inicio de la cola que queda
         resetForNextItem()
       }
+    } else {
+      // Reintentar esta misma
+      resetForNextItem()
     }
   }
 }
@@ -260,24 +255,23 @@ const handleNext = () => {
         )}
 
         <CardContent className="p-8 relative z-10">
-          <div className="mb-6">
-            <div className="flex justify-between text-sm text-amber-700 mb-2">
-              <span>{isRetryRound ? "Repaso" : "Progreso"}</span>
-              <span>
-                {isRetryRound ? `${retryQueue.length} por repasar` : `${currentIndex + 1} / ${currentItems.length}`}
-              </span>
-            </div>
-            <Progress
-              value={
-                isRetryRound
-                  ? ((retryQueue.length - retryQueue.filter((item) => item.id !== currentItem.id).length) /
-                      retryQueue.length) *
-                    100
-                  : ((currentIndex + 1) / currentItems.length) * 100
-              }
-            />
-          </div>
+          <div className="mb-2 flex items-center justify-between">
+  <span className="text-sm font-medium text-amber-800">Progreso</span>
+  <span className="text-xs text-amber-700">
+    {isRetryRound && level.type === "quiz"
+      ? "Corrigiendo errores"
+      : `${currentIndex + 1} / ${currentItems.length}`}
+  </span>
+</div>
 
+<Progress
+  className="h-2"
+  value={
+    isRetryRound && level.type === "quiz"
+      ? 100
+      : Math.round(((currentIndex + 1) / Math.max(1, currentItems.length)) * 100)
+  }
+/>
           {currentIndex === 0 && level.story && !isRetryRound && (
             <div className="mb-6 p-4 bg-amber-50 rounded-lg border border-amber-200">
               <p className="text-amber-800">{level.story}</p>
@@ -351,7 +345,8 @@ const handleNext = () => {
                   : currentItem.feedback.incorrect}
               </p>
               <Button onClick={handleNext} className="mt-4 bg-amber-500 hover:bg-amber-600 text-white">
-                {currentItem.options[selectedOption!].correct
+                {selectedOption != null && currentItem.options[selectedOption].correct
+              
                   ? (isRetryRound && retryQueue.filter((item) => item.id !== currentItem.id).length === 0) ||
                     (!isRetryRound && currentIndex === currentItems.length - 1 && retryQueue.length === 0)
                     ? "Completar nivel"
