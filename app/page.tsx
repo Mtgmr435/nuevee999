@@ -1134,183 +1134,156 @@ export default function Nu9veAcademy() {
     setCurrentView("course")
   }
 
-  const renderWelcome = () => (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 relative overflow-hidden">
-      {/* Background jungle scene */}
-      <div className="absolute inset-0 bg-[url('/jungle-campfire-night-scene-animated.png')] opacity-30 bg-cover bg-center"></div>
+const renderWelcome = () => (
+  <div
+    className="relative min-h-screen w-full flex items-center justify-center bg-cover bg-center"
+    style={{
+      backgroundImage: `url('jungle-adventure-background.jpg')`,
+    }}
+  >
+    {/* Capa oscura para contraste */}
+    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
 
-      <Card className="max-w-md w-full mx-4 relative z-10 border-2 border-amber-300 shadow-2xl bg-white/95 backdrop-blur-sm">
-        <CardContent className="p-8 text-center">
-          {/* Animated capybara */}
-          <div className="text-8xl mb-6 animate-bounce">🦫</div>
+    {/* Contenido */}
+    <div className="relative z-10 text-center text-white max-w-2xl mx-auto px-6">
+      {/* Mascota */}
+      <div className="text-[9rem] mb-10 animate-bounce">🦫</div>
 
-          {/* Welcome message */}
-          <h1 className="text-3xl font-bold text-amber-800 mb-4">¡Hola, Explorador! 🌅</h1>
-          <div className="text-amber-700 mb-6 space-y-2">
-            <p className="text-lg">
-              Bienvenido a tu viaje en la <strong>Comunicación Efectiva</strong>.
-            </p>
-            <p>Aquí aprenderás a expresarte con confianza, empatía y claridad.</p>
-            <p className="text-sm text-amber-600">
-              ¡Tu mascota estará contigo en cada paso, lista para ayudarte cuando lo necesites!
-            </p>
-          </div>
+      {/* Título */}
+      <h1 className="text-6xl sm:text-7xl font-extrabold text-orange-400 mb-8 drop-shadow-lg">
+        Bienvenido a Nu9ve
+      </h1>
 
-          {/* Progress indicator */}
-          <div className="mb-6 p-4 bg-amber-50 rounded-lg border border-amber-200">
-            <div className="flex justify-between text-sm text-amber-700 mb-2">
-              <span>Progreso del Curso</span>
-              <span>0 de 8 niveles completados</span>
-            </div>
-            <Progress value={0} className="bg-amber-200" />
-          </div>
+      {/* Descripción */}
+      <p className="text-2xl sm:text-3xl text-gray-100 mb-16 leading-relaxed drop-shadow-md">
+        Aquí aprenderás a expresarte con <br />
+        confianza, empatía y claridad.
+      </p>
 
-          {/* Action buttons */}
-          <div className="space-y-3">
-            <Button
-              onClick={() => setCurrentView("dashboard")}
-              className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-3 text-lg shadow-lg"
-            >
-              <Play className="w-5 h-5 mr-2" />
-              Comenzar Aventura
-            </Button>
+      {/* Botones alineados iguales */}
+      <div className="flex flex-col sm:flex-row gap-6 justify-center">
+        {/* Iniciar sesión con Google */}
+        <div className="flex-1">
+          <LoginButton />
+        </div>
 
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                className="flex-1 border-amber-300 text-amber-700 hover:bg-amber-50 bg-transparent"
-                onClick={() => {
-                  // Future: implement login
-                  setCurrentView("dashboard")
-                }}
-              >
-                <LogIn className="w-4 h-4 mr-2" />
-                Iniciar Sesión
-              </Button>
-              <div className="flex gap-2">
-                <LoginButton />
-                <Button
-                  variant="outline"
-                  className="flex-1 border-amber-300 text-amber-700 hover:bg-amber-50 bg-transparent"
-                  onClick={() => setCurrentView("dashboard")}
-                >
-                  Continuar como Invitado
-                </Button>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  )
-
-  const renderDashboard = () => (
-    <div
-  className="relative min-h-screen bg-cover bg-center bg-no-repeat"
-  style={{
-    backgroundImage: `url('/jungle-adventure-background.jpg')`, // o tu foto
-  }}
+        {/* Continuar como Invitado */}
+        <Button
+  onClick={() => setCurrentView("dashboard")}
+  className="flex-1 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white text-lg px-8 py-4 rounded-xl shadow-md flex items-center justify-center"
 >
-   <div className="relative z-10 p-6 space-y-6"></div>
-      
+  Continuar como Invitado
+</Button>
+      </div>
+    </div>
+  </div>
+)
 
-      <div className="relative z-10 p-6">
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6 bg-white/95 backdrop-blur-md rounded-2xl p-6 shadow-lg border border-white/30">
-            <div className="flex items-center gap-4">
-              <div className="text-5xl animate-bounce">
-                {petData[userData.currentPet as keyof typeof petData]?.icon || "🐹"}
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-amber-800 mb-1">¡Hola, Explorador!</h1>
-                <p className="text-amber-600">Continúa tu aventura de aprendizaje</p>
-              </div>
-            </div>
 
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2">
-                <Coins className="w-5 h-5 text-amber-500" />
-                <span className="font-semibold text-amber-800">{userData.coins}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Gem className="w-5 h-5 text-cyan-500" />
-                <span className="font-semibold text-cyan-800">{userData.gems}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Heart className="w-5 h-5 text-red-500" />
-                <span className="font-semibold text-red-800">
-                  {userData.lives}/{userData.maxLives}
-                </span>
-                {userData.lives < userData.maxLives && (
-                  <div className="text-xs text-red-600 ml-1">+1 en {15 - lifeTimer}s</div>
-                )}
-              </div>
-              {userData.lives < userData.maxLives && userData.coins >= 15 && (
-                <Button onClick={buyLife} size="sm" className="bg-red-500 hover:bg-red-600 text-white rounded-xl">
-                  +1 ❤️ (15🪙)
-                </Button>
-              )}
-            </div>
+
+ const renderDashboard = () => (
+  <div
+    className="relative min-h-screen bg-cover bg-center bg-no-repeat"
+    style={{
+      backgroundImage: `url('/jungle-adventure-background.jpg')`, // tu fondo aquí
+    }}
+  >
+    {/* Degradado encima del fondo */}
+    <div className="absolute inset-0 bg-gradient-to-br from-amber-900/30 via-orange-900/20 to-yellow-900/30"></div>
+
+    {/* Contenido centrado encima */}
+    <div className="relative z-10 max-w-5xl mx-auto px-6 py-12 space-y-8">
+      {/* Tarjeta de bienvenida */}
+      <div className="flex items-center justify-between bg-white/90 backdrop-blur-md rounded-2xl p-6 shadow-lg">
+        <div className="flex items-center gap-4">
+          <div className="text-5xl animate-bounce">
+            {petData[userData.currentPet as keyof typeof petData]?.icon || "🐹"}
           </div>
-
-          <div className="mb-8 bg-white/25 backdrop-blur-md rounded-2xl p-4 shadow-lg border border-white/20">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-amber-800">Progreso General</h2>
-              <div className="text-sm text-amber-600">{userData.completedLevels.length} niveles completados</div>
-            </div>
-            <div className="mt-2">
-              <Progress
-                value={
-                  (userData.completedLevels.length / courses.reduce((acc, course) => acc + course.totalLevels, 0)) * 100
-                }
-                className="h-2"
-              />
-            </div>
+          <div>
+            <h1 className="text-2xl font-bold text-amber-800 mb-1">¡Hola, Explorador!</h1>
+            <p className="text-amber-600">Continúa tu aventura de aprendizaje</p>
           </div>
         </div>
 
-        {/* Cofre diario */}
-        {showDailyChest && (
-          <Card className="border-2 border-amber-400 bg-gradient-to-r from-amber-50 to-orange-50 relative overflow-hidden">
-            <div className="absolute inset-0 bg-[url('/treasure-chest-jungle-background.png')] opacity-10"></div>
-            <CardContent className="p-6 text-center relative z-10">
-              <div className={`text-6xl mb-4 ${chestAnimation ? "animate-bounce" : "animate-pulse"}`}>🎁</div>
-              <h3 className="text-xl font-bold mb-2 text-amber-800">¡Cofre Diario Disponible!</h3>
-              <p className="text-amber-600 mb-4">Tu capibara ha encontrado un tesoro especial</p>
-              <Button
-                onClick={openDailyChest}
-                className="bg-amber-500 hover:bg-amber-600 text-white shadow-lg"
-                disabled={chestAnimation}
-              >
-                {chestAnimation ? "Abriendo..." : "Abrir Cofre"}
-              </Button>
-            </CardContent>
-          </Card>
-        )}
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2">
+            <Coins className="w-5 h-5 text-amber-500" />
+            <span className="font-semibold text-amber-800">{userData.coins}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Gem className="w-5 h-5 text-cyan-500" />
+            <span className="font-semibold text-cyan-800">{userData.gems}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Heart className="w-5 h-5 text-red-500" />
+            <span className="font-semibold text-red-800">
+              {userData.lives}/{userData.maxLives}
+            </span>
+            {userData.lives < userData.maxLives && (
+              <div className="text-xs text-red-600 ml-1">+1 en {15 - lifeTimer}s</div>
+            )}
+          </div>
+        </div>
+      </div>
 
-        <div>
-          <h2 className="text-3xl font-bold mb-8 text-white text-center drop-shadow-lg">Selecciona tu Curso</h2>
-          <DeckCarousel
-            courses={courses.map((course) => ({
-              ...course,
-              completedLevels: userData.completedLevels.filter((level) => {
-                if (course.id === "communication-v1") return level >= 1 && level <= 12
-                if (course.id === "communication-v2") return level >= 13 && level <= 24
-                if (course.id === "communication-v3") return level >= 25 && level <= 36
-                if (course.id === "communication-v4") return level >= 37 && level <= 48
-                if (course.id === "communication-premium") return level >= 49 && level <= 60
-                return false
-              }).length,
-            }))}
-            onCourseSelect={(courseId) => {
-              // setSelectedCourse(courseId)
-              setCurrentView("course")
-            }}
+      {/* Tarjeta de progreso */}
+      <div className="bg-white/90 backdrop-blur-md rounded-2xl p-4 shadow-lg">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-bold text-amber-800">Progreso General</h2>
+          <div className="text-sm text-amber-600">{userData.completedLevels.length} niveles completados</div>
+        </div>
+        <div className="mt-2">
+          <Progress
+            value={
+              (userData.completedLevels.length /
+                courses.reduce((acc, course) => acc + course.totalLevels, 0)) *
+              100
+            }
+            className="h-2"
           />
         </div>
       </div>
+
+      {/* Cofre diario */}
+      {showDailyChest && (
+        <Card className="border-2 border-amber-400 bg-white/90 backdrop-blur-md shadow-lg">
+          <CardContent className="p-6 text-center">
+            <div className={`text-6xl mb-4 ${chestAnimation ? "animate-bounce" : "animate-pulse"}`}>🎁</div>
+            <h3 className="text-xl font-bold mb-2 text-amber-800">¡Cofre Diario Disponible!</h3>
+            <p className="text-amber-600 mb-4">Tu capibara ha encontrado un tesoro especial</p>
+            <Button
+              onClick={openDailyChest}
+              className="bg-amber-500 hover:bg-amber-600 text-white shadow-lg"
+              disabled={chestAnimation}
+            >
+              {chestAnimation ? "Abriendo..." : "Abrir Cofre"}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Cursos */}
+      <div>
+        <h2 className="text-3xl font-bold mb-8 text-white text-center drop-shadow-lg">Selecciona tu Curso</h2>
+        <DeckCarousel
+          courses={courses.map((course) => ({
+            ...course,
+            completedLevels: userData.completedLevels.filter((level) => {
+              if (course.id === "communication-v1") return level >= 1 && level <= 12
+              if (course.id === "communication-v2") return level >= 13 && level <= 24
+              if (course.id === "communication-v3") return level >= 25 && level <= 36
+              if (course.id === "communication-v4") return level >= 37 && level <= 48
+              if (course.id === "communication-premium") return level >= 49 && level <= 60
+              return false
+            }).length,
+          }))}
+          onCourseSelect={() => setCurrentView("course")}
+        />
+      </div>
     </div>
-  )
+  </div>
+)
+
 
   const renderShop = () => (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 p-6">
@@ -1586,7 +1559,7 @@ export default function Nu9veAcademy() {
             </div>
           </nav>
 
-          <main className="max-w-6xl mx-auto p-4 py-8">
+          <main className="min-h-screen w-full">
             {currentView === "dashboard" && renderDashboard()}
             {currentView === "course" && renderCourse()}
             {currentView === "shop" && renderShop()}
