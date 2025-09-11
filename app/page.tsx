@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import LoginButton from "@/components/LoginButton"
+import Dashboard from "@/components/Dashboard"
 import {
   Trophy,
   Heart,
@@ -221,8 +222,8 @@ function LevelComponent({
   const [currentIndex, setCurrentIndex] = useState(0)        // índice de la pasada actual
   const [retryQueue, setRetryQueue] = useState<number[]>([]) // índices de preguntas falladas
   const [retryPos, setRetryPos] = useState(0)                // puntero dentro de retryQueue
-// estado nuevo
-const [isFixing, setIsFixing] = useState(false)
+  // estado nuevo
+  const [isFixing, setIsFixing] = useState(false)
 
   const [score, setScore] = useState(0)
   const [selectedOption, setSelectedOption] = useState<number | null>(null)
@@ -612,7 +613,7 @@ const [isFixing, setIsFixing] = useState(false)
     )
   }
 
-    // Normalizamos: todo lo que no sea 'roleplay' lo tratamos como 'quiz'
+  // Normalizamos: todo lo que no sea 'roleplay' lo tratamos como 'quiz'
   const levelKind: "roleplay" | "quiz" = currentLevelData.type === "roleplay" ? "roleplay" : "quiz"
 
   // Resolvemos qué índice de paso mostrar según la pasada
@@ -637,16 +638,16 @@ const [isFixing, setIsFixing] = useState(false)
 
     if (levelKind === "roleplay") {
       // Roleplay: reintento inmediato hasta acertar
-     if (option.correct) {
-  setScore((s) => s + option.points)
-  setIsCorrect(true)
-  setIsFixing(false)
-} else {
-  setIsCorrect(false)
-  onLoseLife()
-  setIsFixing(true)   // ← estamos corrigiendo esta misma
-}
-setShowFeedback(true)
+      if (option.correct) {
+        setScore((s) => s + option.points)
+        setIsCorrect(true)
+        setIsFixing(false)
+      } else {
+        setIsCorrect(false)
+        onLoseLife()
+        setIsFixing(true)   // ← estamos corrigiendo esta misma
+      }
+      setShowFeedback(true)
       return
     }
 
@@ -757,12 +758,11 @@ setShowFeedback(true)
             <div className="flex justify-between text-sm text-amber-700 mb-2">
               <span>Progreso</span>
               <span>
-  {pass === "retry"
-    ? "Repitiendo preguntas"
-    : `${stepIndex + 1} de ${currentLevelData.steps.length}${
-        retryQueue.length > 0 ? ` (${retryQueue.length} por repetir)` : ""
-      }`}
-</span>
+                {pass === "retry"
+                  ? "Repitiendo preguntas"
+                  : `${stepIndex + 1} de ${currentLevelData.steps.length}${retryQueue.length > 0 ? ` (${retryQueue.length} por repetir)` : ""
+                  }`}
+              </span>
             </div>
             <Progress value={((stepIndex + 1) / currentLevelData.steps.length) * 100} />
           </div>
@@ -831,10 +831,9 @@ setShowFeedback(true)
           {showFeedback && (
             <div className="mt-4">
               <div
-  className={`p-4 rounded-lg border-2 ${
-    isCorrect ? "bg-green-500/20 border-green-400/50" : "bg-red-500/20 border-red-400/50"
-  }`}
->
+                className={`p-4 rounded-lg border-2 ${isCorrect ? "bg-green-500/20 border-green-400/50" : "bg-red-500/20 border-red-400/50"
+                  }`}
+              >
                 <div className="flex items-center gap-2 mb-2">
                   <div className={`text-2xl ${isCorrect ? "animate-bounce" : ""}`}>{isCorrect ? "✅" : "❌"}</div>
                   <span className={`font-semibold ${isCorrect ? "text-green-800" : "text-red-800"}`}>
@@ -852,21 +851,20 @@ setShowFeedback(true)
                   Puntos ganados: +{currentStepData.options[selectedOption!].points}
                 </div>
                 <Button
-  onClick={handleNext}
-  className={`mt-2 px-6 py-2 text-white font-semibold rounded-lg ${
-    isCorrect
-      ? "bg-green-500 hover:bg-green-600"
-      : "bg-red-500 hover:bg-red-600"
-  }`}
->
-  {isCorrect
-    ? (pass === "first"
-        ? (stepIndex < currentLevelData.steps.length - 1
-            ? "Siguiente"
-            : (retryQueue.length > 0 ? "Repasar falladas" : "Completar nivel"))
-        : (retryPos < retryQueue.length - 1 ? "Siguiente (repaso)" : "Completar nivel"))
-    : "Reintentar"}
-</Button>
+                  onClick={handleNext}
+                  className={`mt-2 px-6 py-2 text-white font-semibold rounded-lg ${isCorrect
+                    ? "bg-green-500 hover:bg-green-600"
+                    : "bg-red-500 hover:bg-red-600"
+                    }`}
+                >
+                  {isCorrect
+                    ? (pass === "first"
+                      ? (stepIndex < currentLevelData.steps.length - 1
+                        ? "Siguiente"
+                        : (retryQueue.length > 0 ? "Repasar falladas" : "Completar nivel"))
+                      : (retryPos < retryQueue.length - 1 ? "Siguiente (repaso)" : "Completar nivel"))
+                    : "Reintentar"}
+                </Button>
 
 
               </div>
@@ -913,12 +911,12 @@ const DeckCarousel = ({
             <div
               key={course.id}
               className={`absolute transition-all duration-700 ease-out transform ${position === "center"
-                  ? "z-20 scale-110 opacity-100 translate-x-0"
-                  : position === "side"
-                    ? isLeft
-                      ? "z-10 scale-85 opacity-50 -translate-x-80"
-                      : "z-10 scale-85 opacity-50 translate-x-80"
-                    : "opacity-0"
+                ? "z-20 scale-110 opacity-100 translate-x-0"
+                : position === "side"
+                  ? isLeft
+                    ? "z-10 scale-85 opacity-50 -translate-x-80"
+                    : "z-10 scale-85 opacity-50 translate-x-80"
+                  : "opacity-0"
                 }`}
               style={{
                 pointerEvents: isActive ? "auto" : "none",
@@ -926,8 +924,8 @@ const DeckCarousel = ({
             >
               <div
                 className={`w-80 h-[450px] rounded-3xl p-8 shadow-2xl border-2 transition-all duration-700 bg-gradient-to-br ${course.color} ${isActive
-                    ? "cursor-pointer hover:scale-105 hover:shadow-3xl border-white/40 hover:border-white/60"
-                    : "cursor-default border-white/20"
+                  ? "cursor-pointer hover:scale-105 hover:shadow-3xl border-white/40 hover:border-white/60"
+                  : "cursor-default border-white/20"
                   }`}
                 onClick={isActive ? () => onCourseSelect(course.id) : undefined}
                 tabIndex={isActive ? 0 : -1}
@@ -1134,155 +1132,155 @@ export default function Nu9veAcademy() {
     setCurrentView("course")
   }
 
-const renderWelcome = () => (
-  <div
-    className="relative min-h-screen w-full flex items-center justify-center bg-cover bg-center"
-    style={{
-      backgroundImage: `url('jungle-adventure-background.jpg')`,
-    }}
-  >
-    {/* Capa oscura para contraste */}
-    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+  const renderWelcome = () => (
+    <div
+      className="relative min-h-screen w-full flex items-center justify-center bg-cover bg-center"
+      style={{
+        backgroundImage: `url('jungle-adventure-background.jpg')`,
+      }}
+    >
+      {/* Capa oscura para contraste */}
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
 
-    {/* Contenido */}
-    <div className="relative z-10 text-center text-white max-w-2xl mx-auto px-6">
-      {/* Mascota */}
-      <div className="text-[9rem] mb-10 animate-bounce">🦫</div>
+      {/* Contenido */}
+      <div className="relative z-10 text-center text-white max-w-2xl mx-auto px-6">
+        {/* Mascota */}
+        <div className="text-[9rem] mb-10 animate-bounce">🦫</div>
 
-      {/* Título */}
-      <h1 className="text-6xl sm:text-7xl font-extrabold text-orange-400 mb-8 drop-shadow-lg">
-        Bienvenido a Nu9ve
-      </h1>
+        {/* Título */}
+        <h1 className="text-6xl sm:text-7xl font-extrabold text-orange-400 mb-8 drop-shadow-lg">
+          Bienvenido a Nu9ve
+        </h1>
 
-      {/* Descripción */}
-      <p className="text-2xl sm:text-3xl text-gray-100 mb-16 leading-relaxed drop-shadow-md">
-        Aquí aprenderás a expresarte con <br />
-        confianza, empatía y claridad.
-      </p>
+        {/* Descripción */}
+        <p className="text-2xl sm:text-3xl text-gray-100 mb-16 leading-relaxed drop-shadow-md">
+          Aquí aprenderás a expresarte con <br />
+          confianza, empatía y claridad.
+        </p>
 
-      {/* Botones alineados iguales */}
-      <div className="flex flex-col sm:flex-row gap-6 justify-center">
-        {/* Iniciar sesión con Google */}
-        <div className="flex-1">
-          <LoginButton />
+        {/* Botones alineados iguales */}
+        <div className="flex flex-col sm:flex-row gap-6 justify-center">
+          {/* Iniciar sesión con Google */}
+          <div className="flex-1">
+            <LoginButton />
+          </div>
+
+          {/* Continuar como Invitado */}
+          <Button
+            onClick={() => setCurrentView("dashboard")}
+            className="flex-1 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white text-lg px-8 py-4 rounded-xl shadow-md flex items-center justify-center"
+          >
+            Continuar como Invitado
+          </Button>
         </div>
-
-        {/* Continuar como Invitado */}
-        <Button
-  onClick={() => setCurrentView("dashboard")}
-  className="flex-1 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white text-lg px-8 py-4 rounded-xl shadow-md flex items-center justify-center"
->
-  Continuar como Invitado
-</Button>
       </div>
     </div>
-  </div>
-)
+  )
 
 
 
- const renderDashboard = () => (
-  <div
-    className="relative min-h-screen bg-cover bg-center bg-no-repeat"
-    style={{
-      backgroundImage: `url('/jungle-adventure-background.jpg')`, // tu fondo aquí
-    }}
-  >
-    {/* Degradado encima del fondo */}
-    <div className="absolute inset-0 bg-gradient-to-br from-amber-900/30 via-orange-900/20 to-yellow-900/30"></div>
+  const renderDashboard = () => (
+    <div
+      className="relative min-h-screen bg-cover bg-center bg-no-repeat"
+      style={{
+        backgroundImage: `url('/jungle-adventure-background.jpg')`, // tu fondo aquí
+      }}
+    >
+      {/* Degradado encima del fondo */}
+      <div className="absolute inset-0 bg-gradient-to-br from-amber-900/30 via-orange-900/20 to-yellow-900/30"></div>
 
-    {/* Contenido centrado encima */}
-    <div className="relative z-10 max-w-5xl mx-auto px-6 py-12 space-y-8">
-      {/* Tarjeta de bienvenida */}
-      <div className="flex items-center justify-between bg-white/90 backdrop-blur-md rounded-2xl p-6 shadow-lg">
-        <div className="flex items-center gap-4">
-          <div className="text-5xl animate-bounce">
-            {petData[userData.currentPet as keyof typeof petData]?.icon || "🐹"}
+      {/* Contenido centrado encima */}
+      <div className="relative z-10 max-w-5xl mx-auto px-6 py-12 space-y-8">
+        {/* Tarjeta de bienvenida */}
+        <div className="flex items-center justify-between bg-white/90 backdrop-blur-md rounded-2xl p-6 shadow-lg">
+          <div className="flex items-center gap-4">
+            <div className="text-5xl animate-bounce">
+              {petData[userData.currentPet as keyof typeof petData]?.icon || "🐹"}
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-amber-800 mb-1">¡Hola, Explorador!</h1>
+              <p className="text-amber-600">Continúa tu aventura de aprendizaje</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-amber-800 mb-1">¡Hola, Explorador!</h1>
-            <p className="text-amber-600">Continúa tu aventura de aprendizaje</p>
+
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2">
+              <Coins className="w-5 h-5 text-amber-500" />
+              <span className="font-semibold text-amber-800">{userData.coins}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Gem className="w-5 h-5 text-cyan-500" />
+              <span className="font-semibold text-cyan-800">{userData.gems}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Heart className="w-5 h-5 text-red-500" />
+              <span className="font-semibold text-red-800">
+                {userData.lives}/{userData.maxLives}
+              </span>
+              {userData.lives < userData.maxLives && (
+                <div className="text-xs text-red-600 ml-1">+1 en {15 - lifeTimer}s</div>
+              )}
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2">
-            <Coins className="w-5 h-5 text-amber-500" />
-            <span className="font-semibold text-amber-800">{userData.coins}</span>
+        {/* Tarjeta de progreso */}
+        <div className="bg-white/90 backdrop-blur-md rounded-2xl p-4 shadow-lg">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold text-amber-800">Progreso General</h2>
+            <div className="text-sm text-amber-600">{userData.completedLevels.length} niveles completados</div>
           </div>
-          <div className="flex items-center gap-2">
-            <Gem className="w-5 h-5 text-cyan-500" />
-            <span className="font-semibold text-cyan-800">{userData.gems}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Heart className="w-5 h-5 text-red-500" />
-            <span className="font-semibold text-red-800">
-              {userData.lives}/{userData.maxLives}
-            </span>
-            {userData.lives < userData.maxLives && (
-              <div className="text-xs text-red-600 ml-1">+1 en {15 - lifeTimer}s</div>
-            )}
+          <div className="mt-2">
+            <Progress
+              value={
+                (userData.completedLevels.length /
+                  courses.reduce((acc, course) => acc + course.totalLevels, 0)) *
+                100
+              }
+              className="h-2"
+            />
           </div>
         </div>
-      </div>
 
-      {/* Tarjeta de progreso */}
-      <div className="bg-white/90 backdrop-blur-md rounded-2xl p-4 shadow-lg">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-amber-800">Progreso General</h2>
-          <div className="text-sm text-amber-600">{userData.completedLevels.length} niveles completados</div>
-        </div>
-        <div className="mt-2">
-          <Progress
-            value={
-              (userData.completedLevels.length /
-                courses.reduce((acc, course) => acc + course.totalLevels, 0)) *
-              100
-            }
-            className="h-2"
+        {/* Cofre diario */}
+        {showDailyChest && (
+          <Card className="border-2 border-amber-400 bg-white/90 backdrop-blur-md shadow-lg">
+            <CardContent className="p-6 text-center">
+              <div className={`text-6xl mb-4 ${chestAnimation ? "animate-bounce" : "animate-pulse"}`}>🎁</div>
+              <h3 className="text-xl font-bold mb-2 text-amber-800">¡Cofre Diario Disponible!</h3>
+              <p className="text-amber-600 mb-4">Tu capibara ha encontrado un tesoro especial</p>
+              <Button
+                onClick={openDailyChest}
+                className="bg-amber-500 hover:bg-amber-600 text-white shadow-lg"
+                disabled={chestAnimation}
+              >
+                {chestAnimation ? "Abriendo..." : "Abrir Cofre"}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Cursos */}
+        <div>
+          <h2 className="text-3xl font-bold mb-8 text-white text-center drop-shadow-lg">Selecciona tu Curso</h2>
+          <DeckCarousel
+            courses={courses.map((course) => ({
+              ...course,
+              completedLevels: userData.completedLevels.filter((level) => {
+                if (course.id === "communication-v1") return level >= 1 && level <= 12
+                if (course.id === "communication-v2") return level >= 13 && level <= 24
+                if (course.id === "communication-v3") return level >= 25 && level <= 36
+                if (course.id === "communication-v4") return level >= 37 && level <= 48
+                if (course.id === "communication-premium") return level >= 49 && level <= 60
+                return false
+              }).length,
+            }))}
+            onCourseSelect={() => setCurrentView("course")}
           />
         </div>
       </div>
-
-      {/* Cofre diario */}
-      {showDailyChest && (
-        <Card className="border-2 border-amber-400 bg-white/90 backdrop-blur-md shadow-lg">
-          <CardContent className="p-6 text-center">
-            <div className={`text-6xl mb-4 ${chestAnimation ? "animate-bounce" : "animate-pulse"}`}>🎁</div>
-            <h3 className="text-xl font-bold mb-2 text-amber-800">¡Cofre Diario Disponible!</h3>
-            <p className="text-amber-600 mb-4">Tu capibara ha encontrado un tesoro especial</p>
-            <Button
-              onClick={openDailyChest}
-              className="bg-amber-500 hover:bg-amber-600 text-white shadow-lg"
-              disabled={chestAnimation}
-            >
-              {chestAnimation ? "Abriendo..." : "Abrir Cofre"}
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Cursos */}
-      <div>
-        <h2 className="text-3xl font-bold mb-8 text-white text-center drop-shadow-lg">Selecciona tu Curso</h2>
-        <DeckCarousel
-          courses={courses.map((course) => ({
-            ...course,
-            completedLevels: userData.completedLevels.filter((level) => {
-              if (course.id === "communication-v1") return level >= 1 && level <= 12
-              if (course.id === "communication-v2") return level >= 13 && level <= 24
-              if (course.id === "communication-v3") return level >= 25 && level <= 36
-              if (course.id === "communication-v4") return level >= 37 && level <= 48
-              if (course.id === "communication-premium") return level >= 49 && level <= 60
-              return false
-            }).length,
-          }))}
-          onCourseSelect={() => setCurrentView("course")}
-        />
-      </div>
     </div>
-  </div>
-)
+  )
 
 
   const renderShop = () => (
@@ -1473,9 +1471,9 @@ const renderWelcome = () => (
                             <span>⏱️ {level.duration} min</span>
                             <span>⭐ {level.xpReward} XP</span>
                             <span>🪙 {level.coinReward} monedas</span>
-                          <Badge variant="secondary" className="lowercase">
-    {displayType}
-    </Badge>
+                            <Badge variant="secondary" className="lowercase">
+                              {displayType}
+                            </Badge>
                           </div>
                           <p className="text-sm text-amber-600 mt-2">
                             {level.id === 1 && "Aprende a hacer una primera impresión positiva"}

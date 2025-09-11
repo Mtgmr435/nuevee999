@@ -6,6 +6,7 @@ import {
     setPersistence,
     browserLocalPersistence,
 } from "firebase/auth"
+import { getFirestore } from "firebase/firestore"
 
 const firebaseConfig = {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
@@ -22,6 +23,7 @@ export const app = getApps().length ? getApp() : initializeApp(firebaseConfig)
 // Auth + proveedor Google
 export const auth = getAuth(app)
 export const googleProvider = new GoogleAuthProvider()
+export const db = getFirestore(app)
 googleProvider.setCustomParameters({ prompt: "select_account" })
 
 // Persistencia en el navegador
