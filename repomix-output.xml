@@ -63,9 +63,12 @@ lib/confetti.ts
 lib/firebase.ts
 lib/levelBackgrounds.ts
 lib/levels.ts
+lib/levels/communication/quizLevel2.ts
+lib/levels/communication/quizLevel4.ts
+lib/levels/communication/roleplayLevel1.ts
+lib/levels/communication/roleplayLevel3.ts
+lib/levels/communication/roleplayLevel5.ts
 lib/levels/index.ts
-lib/levels/quizLevel1.ts
-lib/levels/roleplayLevel1.ts
 lib/progress.ts
 lib/userTypes.ts
 lib/utils.ts
@@ -88,6 +91,1292 @@ tsconfig.json
 
 <files>
 This section contains the contents of the repository's files.
+
+<file path=".gitignore">
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+</file>
+
+<file path="app/globals.css">
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Updated color tokens to match jungle-themed gamified design for Gen Z */
+  --background: #ffffff;
+  --foreground: #374151;
+  --card: #f0fdf4;
+  --card-foreground: #1f2937;
+  --popover: #ffffff;
+  --popover-foreground: #374151;
+  --primary: #15803d;
+  --primary-foreground: #ffffff;
+  --secondary: #84cc16;
+  --secondary-foreground: #1f2937;
+  --muted: #f0fdf4;
+  --muted-foreground: #4b5563;
+  --accent: #6366f1;
+  --accent-foreground: #ffffff;
+  --destructive: #f87171;
+  --destructive-foreground: #ffffff;
+  --border: #d1d5db;
+  --input: #f8fafc;
+  --ring: #84cc16;
+  --chart-1: #6366f1;
+  --chart-2: #fbbf24;
+  --chart-3: #f472b6;
+  --chart-4: #6ee7b7;
+  --chart-5: #60a5fa;
+  --radius: 0.5rem;
+  --sidebar: #f0fdf4;
+  --sidebar-foreground: #374151;
+  --sidebar-primary: #15803d;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #84cc16;
+  --sidebar-accent-foreground: #1f2937;
+  --sidebar-border: #d1d5db;
+  --sidebar-ring: #84cc16;
+}
+
+.dark {
+  /* Updated dark mode colors to maintain jungle theme with better contrast */
+  --background: #0f172a;
+  --foreground: #f1f5f9;
+  --card: #1e293b;
+  --card-foreground: #f1f5f9;
+  --popover: #1e293b;
+  --popover-foreground: #f1f5f9;
+  --primary: #22c55e;
+  --primary-foreground: #0f172a;
+  --secondary: #84cc16;
+  --secondary-foreground: #0f172a;
+  --muted: #334155;
+  --muted-foreground: #94a3b8;
+  --accent: #6366f1;
+  --accent-foreground: #f1f5f9;
+  --destructive: #f87171;
+  --destructive-foreground: #f1f5f9;
+  --border: #334155;
+  --input: #334155;
+  --ring: #84cc16;
+  --chart-1: #6366f1;
+  --chart-2: #fbbf24;
+  --chart-3: #f472b6;
+  --chart-4: #6ee7b7;
+  --chart-5: #60a5fa;
+  --sidebar: #1e293b;
+  --sidebar-foreground: #f1f5f9;
+  --sidebar-primary: #22c55e;
+  --sidebar-primary-foreground: #0f172a;
+  --sidebar-accent: #84cc16;
+  --sidebar-accent-foreground: #0f172a;
+  --sidebar-border: #334155;
+  --sidebar-ring: #84cc16;
+}
+
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Added custom animations for gamification elements */
+@keyframes bounce-in {
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(0.9);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes pulse-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 5px rgba(132, 204, 22, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(132, 204, 22, 0.8);
+  }
+}
+
+.animate-bounce-in {
+  animation: bounce-in 0.6s ease-out;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+</file>
+
+<file path="components.json">
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "new-york",
+  "rsc": true,
+  "tsx": true,
+  "tailwind": {
+    "config": "",
+    "css": "app/globals.css",
+    "baseColor": "neutral",
+    "cssVariables": true,
+    "prefix": ""
+  },
+  "iconLibrary": "lucide",
+  "aliases": {
+    "components": "@/components",
+    "utils": "@/lib/utils",
+    "ui": "@/components/ui",
+    "lib": "@/lib",
+    "hooks": "@/hooks"
+  }
+}
+</file>
+
+<file path="components/AuthProvider.tsx">
+"use client"
+
+import { ReactNode, createContext, useContext, useEffect, useState } from "react"
+import { onAuthStateChanged, User } from "firebase/auth"
+import { auth } from "@/lib/firebase"
+
+type AuthContextType = { user: User | null; loading: boolean }
+const AuthContext = createContext<AuthContextType>({ user: null, loading: true })
+
+export function useAuth() {
+    return useContext(AuthContext)
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+    const [user, setUser] = useState<User | null>(null)
+    const [loading, setLoading] = useState(true)
+
+    useEffect(() => {
+        const unsub = onAuthStateChanged(auth, (u) => {
+            setUser(u)
+            setLoading(false)
+        })
+        return () => unsub()
+    }, [])
+
+    return <AuthContext.Provider value={{ user, loading }}>{children}</AuthContext.Provider>
+}
+</file>
+
+<file path="components/CourseCard.tsx">
+"use client"
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Progress } from "@/components/ui/progress"
+
+interface CourseCardProps {
+  course: {
+    id: string
+    title: string
+    description: string
+    icon: string
+    color: string
+    totalLevels: number
+    completedLevels: number
+  }
+  isActive?: boolean
+  onSelect: () => void
+  className?: string
+}
+
+export default function CourseCard({ course, isActive = false, onSelect, className = "" }: CourseCardProps) {
+  const progressPercentage = (course.completedLevels / course.totalLevels) * 100
+
+  return (
+    <Card
+      className={`
+        relative overflow-hidden cursor-pointer transition-all duration-300 border-2
+        ${
+          isActive
+            ? "border-amber-400 shadow-2xl scale-105 z-10"
+            : "border-amber-200 shadow-lg hover:shadow-xl opacity-75 hover:opacity-90"
+        }
+        ${className}
+      `}
+      onClick={onSelect}
+      style={{
+        aspectRatio: "3/4",
+        minHeight: "320px",
+      }}
+    >
+      <div className={`h-3 bg-gradient-to-r ${course.color}`} />
+
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <div className="text-4xl mb-2">{course.icon}</div>
+          <div className="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-full font-medium">
+            {course.completedLevels}/{course.totalLevels}
+          </div>
+        </div>
+        <CardTitle className="text-lg text-amber-800 leading-tight">{course.title}</CardTitle>
+        <p className="text-sm text-amber-600 line-clamp-2">{course.description}</p>
+      </CardHeader>
+
+      <CardContent className="pt-0">
+        <div className="mb-4">
+          <div className="flex justify-between text-xs text-amber-700 mb-1">
+            <span>Progreso</span>
+            <span>{Math.round(progressPercentage)}%</span>
+          </div>
+          <Progress value={progressPercentage} className="h-2" />
+        </div>
+
+        <Button
+          className={`w-full ${
+            isActive
+              ? "bg-amber-500 hover:bg-amber-600 text-white shadow-md"
+              : "bg-amber-100 hover:bg-amber-200 text-amber-800"
+          }`}
+          onClick={(e) => {
+            e.stopPropagation()
+            onSelect()
+          }}
+        >
+          {course.completedLevels === 0 ? "Comenzar" : "Continuar"}
+        </Button>
+      </CardContent>
+
+      {course.completedLevels === course.totalLevels && (
+        <div className="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full font-bold">
+          ✓ Completado
+        </div>
+      )}
+    </Card>
+  )
+}
+</file>
+
+<file path="components/CourseList.tsx">
+"use client"
+
+import { Card, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import {
+  MessageCircle,
+  Volume2,
+  Eye,
+  Users,
+  Presentation,
+  Play,
+  Lock,
+  CheckCircle,
+} from "lucide-react"
+
+interface Level {
+  id: number
+  title: string
+  type: "roleplay" | "quiz" | "story" | "video" | "interactive"
+  duration: number
+  xpReward: number
+  coinReward: number
+  isCompleted: boolean
+  isUnlocked: boolean
+}
+
+interface CourseListProps {
+  levels: Level[]
+  userData: any
+  onBack: () => void
+  onStartLevel: (levelId: number) => void
+}
+
+export default function CourseList({ levels, userData, onBack, onStartLevel }: CourseListProps) {
+  const getLevelIcon = (type: string) => {
+    switch (type) {
+      case "roleplay":
+        return <MessageCircle className="w-6 h-6 text-blue-500" />
+      case "interactive":
+        return <Volume2 className="w-6 h-6 text-green-500" />
+      case "video":
+        return <Eye className="w-6 h-6 text-purple-500" />
+      case "story":
+        return <Users className="w-6 h-6 text-orange-500" />
+      case "quiz":
+        return <Presentation className="w-6 h-6 text-red-500" />
+      default:
+        return <Play className="w-6 h-6" />
+    }
+  }
+
+  return (
+    <div
+      className="relative min-h-screen bg-cover bg-center bg-no-repeat"
+      style={{
+        backgroundImage: `url('/jungle-adventure-background.jpg')`, // cambia por el fondo que quieras
+      }}
+    >
+      {/* Degradado encima del fondo */}
+      <div className="absolute inset-0 bg-gradient-to-br from-amber-900/30 via-orange-900/20 to-yellow-900/30"></div>
+
+      <div className="relative z-10 max-w-5xl mx-auto px-6 py-12 space-y-8">
+        {/* Header */}
+        <div className="flex items-center gap-4 mb-6">
+          <Button
+            variant="outline"
+            onClick={onBack}
+            className="border-amber-300 text-amber-700 hover:bg-amber-50"
+          >
+            ← Volver
+          </Button>
+          <h1 className="text-2xl font-bold text-white drop-shadow-md">
+            Comunicación Efectiva
+          </h1>
+          <div className="text-3xl animate-bounce">🦫</div>
+        </div>
+
+        {/* Grid de niveles */}
+        <div className="grid gap-8">
+          {levels.map((level) => {
+            const isCompleted = userData.completedLevels.includes(level.id)
+
+            return (
+              <Card
+                key={level.id}
+                className={`relative overflow-hidden rounded-2xl shadow-xl transition-all duration-300
+                ${level.isUnlocked ? "cursor-pointer hover:scale-[1.02]" : "opacity-50"}
+                ${isCompleted ? "border-green-500 bg-green-50" : "border-amber-200 bg-white/90 backdrop-blur-md"}`}
+              >
+                <div
+                  className="absolute inset-0 opacity-15"
+                  style={{
+                    backgroundImage: `url('/assets/worlds/selva.png')`, // 👈 aquí puedes cambiar por mundo específico
+                    backgroundSize: "cover",
+                    backgroundPosition: "center",
+                  }}
+                ></div>
+
+                <CardContent className="p-6 relative z-10">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="relative">
+                        {isCompleted ? (
+                          <div className="relative">
+                            <CheckCircle className="w-12 h-12 text-green-500" />
+                            <div className="absolute -top-1 -right-1 text-xl">✨</div>
+                          </div>
+                        ) : level.isUnlocked ? (
+                          <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-600 rounded-full flex items-center justify-center text-white font-bold shadow-lg">
+                            {level.id}
+                          </div>
+                        ) : (
+                          <Lock className="w-12 h-12 text-gray-400" />
+                        )}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          {getLevelIcon(level.type)}
+                          <h3 className="text-lg font-bold text-amber-800">{level.title}</h3>
+                        </div>
+                        <div className="flex items-center gap-4 text-sm text-amber-600">
+                          <span>⏱️ {level.duration} min</span>
+                          <span>⭐ {level.xpReward} XP</span>
+                          <span>🪙 {level.coinReward} monedas</span>
+                          <Badge variant="secondary" className="lowercase">
+                            {level.type}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+
+                    {level.isUnlocked && (
+                      <Button
+                        onClick={() => onStartLevel(level.id)}
+                        disabled={!level.isUnlocked}
+                        className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white shadow-lg"
+                      >
+                        {isCompleted ? "Repetir" : "Jugar"}
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
+</file>
+
+<file path="components/Dashboard.tsx">
+"use client"
+import { useEffect, useState } from "react"
+import { useAuth } from "./AuthProvider"
+import { getProgress, saveProgress, updateStreak, getLeaderboard } from "@/lib/progress"
+
+export default function Dashboard() {
+    const { user } = useAuth()
+    const [progress, setProgress] = useState<any>(null)
+    const [streak, setStreak] = useState<number | null>(null)
+    const [leaders, setLeaders] = useState<any[]>([])
+
+    // 🔹 Cargar progreso, racha y ranking
+    useEffect(() => {
+        if (user) {
+            // Leer progreso guardado
+            getProgress(user.uid).then((data) => {
+                if (data) setProgress(data)
+                else setProgress({ level: 1, points: 0 })
+            })
+
+            // Actualizar racha
+            updateStreak(user.uid, user.displayName || "Jugador Anónimo").then((data) => {
+                setStreak(data?.streak || 1)
+            })
+        }
+
+        // Ranking visible para todos (incluso invitados)
+        getLeaderboard(10).then((data) => {
+            setLeaders(data)
+        })
+    }, [user])
+
+    // 🔹 Actualizar progreso (sumar puntos)
+    const handleUpdate = async () => {
+        if (user && progress) {
+            const newProgress = { ...progress, points: progress.points + 10 }
+            setProgress(newProgress)
+            await saveProgress(user.uid, newProgress)
+        }
+    }
+
+    return (
+        <div style={{ padding: "20px", fontFamily: "Arial" }}>
+            {/* Si hay usuario logueado */}
+            {user ? (
+                <div>
+                    <h1>Hola {user.displayName} 👋</h1>
+
+                    <div style={{
+                        marginTop: "15px",
+                        padding: "15px",
+                        border: "2px solid #eee",
+                        borderRadius: "12px",
+                        maxWidth: "320px"
+                    }}>
+                        <p>⭐ Nivel: {progress?.level}</p>
+                        <p>🎯 Puntos: {progress?.points}</p>
+                        <p style={{ fontSize: "20px", fontWeight: "bold", color: "orangered" }}>
+                            🔥 Racha: {streak} {streak === 1 ? "día" : "días"}
+                        </p>
+                    </div>
+
+                    <button
+                        onClick={handleUpdate}
+                        style={{
+                            marginTop: "20px",
+                            padding: "10px 15px",
+                            background: "orange",
+                            border: "none",
+                            borderRadius: "8px",
+                            color: "white",
+                            cursor: "pointer",
+                            fontSize: "16px"
+                        }}
+                    >
+                        ➕ Sumar 10 puntos
+                    </button>
+                </div>
+            ) : (
+                <h2>👋 Bienvenido invitado</h2>
+            )}
+
+            {/* Leaderboard visible siempre */}
+            <div style={{ marginTop: "30px" }}>
+                <h2>🏆 Ranking de Rachas</h2>
+                {leaders.length === 0 && <p>No hay jugadores aún.</p>}
+
+                <ol style={{ paddingLeft: "20px" }}>
+                    {leaders.map((player, index) => (
+                        <li key={player.id} style={{ marginBottom: "8px" }}>
+                            <span style={{ fontWeight: "bold" }}>#{index + 1}</span>{" "}
+                            {player.name || "Jugador Anónimo"} → 🔥 {player.streak} días
+                        </li>
+                    ))}
+                </ol>
+            </div>
+        </div>
+    )
+}
+</file>
+
+<file path="components/Leaderboard.tsx">
+"use client"
+import { useEffect, useState } from "react"
+import { getLeaderboard } from "@/lib/progress"
+
+export default function Leaderboard() {
+    const [leaders, setLeaders] = useState<any[]>([])
+
+    useEffect(() => {
+        getLeaderboard(10).then((data) => {
+            setLeaders(data)
+        })
+    }, [])
+
+    return (
+        <div style={{ marginTop: "30px" }}>
+            <h2>🏆 Ranking de Rachas</h2>
+            {leaders.length === 0 && <p>No hay jugadores aún.</p>}
+
+            <ol style={{ paddingLeft: "20px" }}>
+                {leaders.map((user, index) => (
+                    <li key={user.id} style={{ marginBottom: "8px" }}>
+                        <span style={{ fontWeight: "bold" }}>
+                            #{index + 1}
+                        </span>{" "}
+                        {user.name || "Jugador Anónimo"} → 🔥 {user.streak} días
+                    </li>
+                ))}
+            </ol>
+        </div>
+    )
+}
+</file>
+
+<file path="components/ui/badge.tsx">
+import * as React from "react"
+import { Slot } from "@radix-ui/react-slot"
+import { cva, type VariantProps } from "class-variance-authority"
+
+import { cn } from "@/lib/utils"
+
+const badgeVariants = cva(
+  "inline-flex items-center justify-center rounded-md border px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow] overflow-hidden",
+  {
+    variants: {
+      variant: {
+        default:
+          "border-transparent bg-primary text-primary-foreground [a&]:hover:bg-primary/90",
+        secondary:
+          "border-transparent bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90",
+        destructive:
+          "border-transparent bg-destructive text-white [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
+        outline:
+          "text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  }
+)
+
+function Badge({
+  className,
+  variant,
+  asChild = false,
+  ...props
+}: React.ComponentProps<"span"> &
+  VariantProps<typeof badgeVariants> & { asChild?: boolean }) {
+  const Comp = asChild ? Slot : "span"
+
+  return (
+    <Comp
+      data-slot="badge"
+      className={cn(badgeVariants({ variant }), className)}
+      {...props}
+    />
+  )
+}
+
+export { Badge, badgeVariants }
+</file>
+
+<file path="components/ui/card.tsx">
+import * as React from "react"
+
+import { cn } from "@/lib/utils"
+
+function Card({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card"
+      className={cn(
+        "bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-header"
+      className={cn(
+        "@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-title"
+      className={cn("leading-none font-semibold", className)}
+      {...props}
+    />
+  )
+}
+
+function CardDescription({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-description"
+      className={cn("text-muted-foreground text-sm", className)}
+      {...props}
+    />
+  )
+}
+
+function CardAction({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-action"
+      className={cn(
+        "col-start-2 row-span-2 row-start-1 self-start justify-self-end",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function CardContent({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-content"
+      className={cn("px-6", className)}
+      {...props}
+    />
+  )
+}
+
+function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-footer"
+      className={cn("flex items-center px-6 [.border-t]:pt-6", className)}
+      {...props}
+    />
+  )
+}
+
+export {
+  Card,
+  CardHeader,
+  CardFooter,
+  CardTitle,
+  CardAction,
+  CardDescription,
+  CardContent,
+}
+</file>
+
+<file path="eslint.config.mjs">
+import { dirname } from "path";
+import { fileURLToPath } from "url";
+import { FlatCompat } from "@eslint/eslintrc";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const compat = new FlatCompat({
+  baseDirectory: __dirname,
+});
+
+const eslintConfig = [
+  ...compat.config({
+    extends: ["next/core-web-vitals", "next/typescript"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-unused-vars": "off"
+    }
+  })
+];
+
+export default eslintConfig;
+</file>
+
+<file path="lib/confetti.ts">
+import confetti from "canvas-confetti"
+
+export function launchConfetti() {
+  confetti({
+    particleCount: 100,
+    spread: 70,
+    origin: { y: 0.6 },
+    colors: ["#FFD700", "#FF69B4", "#87CEFA", "#32CD32"]
+  })
+}
+</file>
+
+<file path="lib/levelBackgrounds.ts">
+export const levelBackgrounds: Record<string, string> = {
+  selva: "/assets/worlds/selva.png",
+  montana: "/assets/worlds/montana.png",
+  rio: "/assets/worlds/rio.png",
+  mercado: "/assets/worlds/mercado.png",
+  ciudad: "/assets/worlds/ciudad.png",
+}
+</file>
+
+<file path="lib/levels.ts">
+import { Level } from "@/lib/userTypes"
+
+/**
+ * 🔹 Aquí organizamos los cursos por categoría
+ * Cada curso tiene sus niveles (quiz / roleplay por ahora).
+ * En el futuro puedes meter más tipos: "interactive", "video", etc.
+ */
+export const courses: Record<string, Level[]> = {
+  communication: [
+    {
+      id: 1,
+      title: "Primeros Encuentros",
+      type: "roleplay",
+      duration: 8,
+      xpReward: 50,
+      coinReward: 20,
+      isCompleted: false,
+      isUnlocked: true,
+      world: "selva",
+    },
+    {
+      id: 2,
+      title: "Escucha Activa",
+      type: "quiz",
+      duration: 6,
+      xpReward: 40,
+      coinReward: 15,
+      isCompleted: false,
+      isUnlocked: true,
+      world: "montana",
+    },
+    {
+      id: 3,
+      title: "Comunicación No Verbal",
+      type: "quiz",
+      duration: 7,
+      xpReward: 45,
+      coinReward: 18,
+      isCompleted: false,
+      isUnlocked: false,
+      world: "rio",
+    },
+    {
+      id: 4,
+      title: "Resolviendo Malentendidos",
+      type: "roleplay",
+      duration: 9,
+      xpReward: 60,
+      coinReward: 25,
+      isCompleted: false,
+      isUnlocked: false,
+      world: "ciudad",
+    },
+  ],
+
+  leadership: [
+    {
+      id: 1,
+      title: "Liderazgo Positivo",
+      type: "quiz",
+      duration: 6,
+      xpReward: 40,
+      coinReward: 15,
+      isCompleted: false,
+      isUnlocked: true,
+      world: "mercado",
+    },
+    {
+      id: 2,
+      title: "Tomando Decisiones Difíciles",
+      type: "roleplay",
+      duration: 10,
+      xpReward: 70,
+      coinReward: 30,
+      isCompleted: false,
+      isUnlocked: false,
+      world: "rio",
+    },
+  ],
+
+  creativity: [
+    {
+      id: 1,
+      title: "Pensamiento Lateral",
+      type: "quiz",
+      duration: 7,
+      xpReward: 45,
+      coinReward: 20,
+      isCompleted: false,
+      isUnlocked: true,
+      world: "mercado",
+    },
+    {
+      id: 2,
+      title: "Improvisación en Equipo",
+      type: "roleplay",
+      duration: 8,
+      xpReward: 55,
+      coinReward: 22,
+      isCompleted: false,
+      isUnlocked: false,
+      world: "selva",
+    },
+  ],
+}
+
+/**
+ * 🔹 Helper para obtener todos los niveles de todos los cursos
+ * (por si quieres listarlos en una sola vista de roadmap)
+ */
+export const allLevels: Level[] = Object.values(courses).flat()
+</file>
+
+<file path="lib/levels/communication/quizLevel2.ts">
+// lib/levels/quizLevel1.ts
+export const quizLevel2 = {
+  id: 2,
+  title: "Presentaciones Efectivas",
+  type: "quiz" as const,
+  duration: 10,
+  xpReward: 60,
+  coinReward: 25,
+  background: "assets/worlds/montana.png",
+  story:
+    "Debes presentar tu proyecto ante el consejo de capibaras ancianas. Tu misión es demostrar claridad, seguridad y lograr que todos te entiendan.",
+  hint: "Una buena presentación engancha desde el inicio, es clara y termina con un llamado a la acción.",
+  steps: [
+    {
+      situation: "¿Cuál es la mejor manera de iniciar tu presentación?",
+      options: [
+        { text: "Con una historia breve relacionada al tema", correct: true, points: 20 },
+        { text: "Con estadísticas y datos duros", correct: false, points: 5 },
+        { text: "Disculpándome por posibles errores", correct: false, points: 0 },
+      ],
+      feedback: {
+        correct: "¡Excelente! Las historias capturan atención y crean conexión emocional inmediata.",
+        incorrect: "Las historias conectan emocionalmente desde el inicio y hacen tu mensaje memorable.",
+      },
+    },
+    {
+      situation: "Notas que el público se distrae. ¿Qué haces?",
+      options: [
+        { text: "Hago una pregunta directa o cambio el ritmo", correct: true, points: 20 },
+        { text: "Continúo como si nada pasara", correct: false, points: 0 },
+        { text: "Hablo más fuerte para captar atención", correct: false, points: 0 },
+      ],
+      feedback: {
+        correct: "¡Muy bien! Involucrar al público recupera su atención.",
+        incorrect: "Cuando pierdes atención, involucra al público con preguntas o cambios de ritmo.",
+      },
+    },
+  ],
+}
+</file>
+
+<file path="lib/levels/communication/quizLevel4.ts">
+export const quizLevel4 = {
+  id: 4,
+  title: "Manejo de Conflictos",
+  type: "quiz" as const,
+  duration: 12,
+  xpReward: 80,
+  coinReward: 30,
+  background: "assets/worlds/mercado.png",
+  story: "Una discusión entre capibaras amenaza la armonía del grupo.",
+  hint: "Escuchar y mediar es mejor que imponer.",
+  steps: [
+    {
+      situation: "Dos compañeros discuten, ¿qué haces?",
+      options: [
+        { text: "Ignoro el conflicto", correct: false, points: 0 },
+        { text: "Escucho a ambas partes y busco puntos comunes", correct: true, points: 30 },
+        { text: "Me pongo del lado de uno", correct: false, points: 0 },
+      ],
+      feedback: {
+        correct: "Excelente, la mediación fomenta el respeto.",
+        incorrect: "Tomar partido genera más conflicto.",
+      },
+    },
+  ],
+}
+</file>
+
+<file path="lib/levels/communication/roleplayLevel1.ts">
+// lib/levels/roleplayLevel1.ts
+export const roleplayLevel1 = {
+  id: 1,
+  title: "Primeros Encuentros",
+  type: "roleplay" as const,
+  duration: 8,
+  xpReward: 50,
+  coinReward: 20,
+  background: "assets/worlds/campamento.png",
+  story:
+    "Llegas a un campamento de capibaras exploradoras en medio de la selva. Es tu primer día y necesitas presentarte al grupo. Tu objetivo es causar una buena primera impresión.",
+  hint:
+    "Recuerda: una sonrisa genuina y mostrar interés por los demás son claves universales para conectar.",
+  steps: [
+    {
+      situation: "¿Cómo saludarás a una capibara desconocida que se acerca a ti?",
+      options: [
+        { text: "Con una sonrisa cálida y contacto visual directo", correct: true, points: 20 },
+        { text: "Con un saludo rápido sin mirar mucho", correct: false, points: 0 },
+        { text: "Esperando a que ella hable primero", correct: false, points: 0 },
+      ],
+      feedback: {
+        correct: "¡Excelente! El contacto visual y la sonrisa genuina transmiten confianza y apertura.",
+        incorrect: "Una sonrisa cálida y contacto visual directo son fundamentales para una buena primera impresión.",
+      },
+    },
+    {
+      situation: "Durante la conversación, ¿mantienes contacto visual?",
+      options: [
+        { text: "Sí, de manera natural y respetuosa", correct: true, points: 20 },
+        { text: "No, me da pena mirar a los ojos", correct: false, points: 0 },
+        { text: "Solo cuando hablo yo", correct: false, points: 5 },
+      ],
+      feedback: {
+        correct: "Perfecto. El contacto visual muestra interés genuino y construye confianza.",
+        incorrect: "El contacto visual natural (no fijo) demuestra respeto e interés por la otra persona.",
+      },
+    },
+    {
+      situation: "El interlocutor responde de manera tímida. ¿Qué haces?",
+      options: [
+        { text: "Le doy espacio y hablo más suave", correct: true, points: 20 },
+        { text: "Trato de animarlo hablando más fuerte", correct: false, points: 0 },
+        { text: "Cambio de tema inmediatamente", correct: false, points: 0 },
+      ],
+      feedback: {
+        correct: "¡Muy bien! Adaptar tu energía a la del otro muestra inteligencia emocional.",
+        incorrect: "Cuando alguien es tímido, es mejor bajar la intensidad y darle espacio para abrirse.",
+      },
+    },
+    {
+      situation: "Una capibara te ofrece la mano para saludar. ¿Qué tipo de apretón usas?",
+      options: [
+        { text: "Firme pero no excesivo, con contacto visual", correct: true, points: 20 },
+        { text: "Muy suave, casi sin fuerza", correct: false, points: 0 },
+        { text: "Muy fuerte para mostrar seguridad", correct: false, points: 0 },
+      ],
+      feedback: {
+        correct: "Excelente. Un apretón firme pero respetuoso transmite confianza sin intimidar.",
+        incorrect: "Un apretón de manos debe ser firme pero no excesivo, acompañado de contacto visual.",
+      },
+    },
+    {
+      situation: "Te presentan al grupo. ¿Cómo te presentas?",
+      options: [
+        { text: "Digo mi nombre y algo que me gusta hacer", correct: true, points: 20 },
+        { text: "Solo digo mi nombre", correct: false, points: 5 },
+        { text: "Hago una broma para romper el hielo", correct: false, points: 0 },
+      ],
+      feedback: {
+        correct: "¡Perfecto! Compartir un interés personal ayuda a otros a conectar contigo.",
+        incorrect: "Agregar algo personal (un interés o pasión) ayuda a crear conexiones más profundas.",
+      },
+    },
+  ],
+}
+</file>
+
+<file path="lib/levels/communication/roleplayLevel3.ts">
+export const roleplayLevel3 = {
+  id: 3,
+  title: "Comunicación No Verbal",
+  type: "roleplay" as const,
+  duration: 7,
+  xpReward: 45,
+  coinReward: 18,
+  background: "assets/worlds/rio.png",
+  story: "El lenguaje corporal dice más que las palabras.",
+  hint: "Mantén contacto visual y usa gestos abiertos.",
+  steps: [
+    {
+      situation: "Estás en una reunión, ¿cómo te sientas?",
+      options: [
+        { text: "Con los brazos cruzados", correct: false, points: 0 },
+        { text: "Relajado, con postura abierta", correct: true, points: 20 },
+        { text: "Mirando el celular", correct: false, points: 0 },
+      ],
+      feedback: {
+        correct: "¡Bien! Una postura abierta genera confianza.",
+        incorrect: "El lenguaje corporal cerrado transmite desinterés.",
+      },
+    },
+  ],
+}
+</file>
+
+<file path="lib/levels/communication/roleplayLevel5.ts">
+export const roleplayLevel5 = {
+  id: 5,
+  title: "Presentaciones Efectivas",
+  type: "roleplay" as const,
+  duration: 15,
+  xpReward: 100,
+  coinReward: 40,
+  background: "assets/worlds/selva.png",
+  story: "Debes presentar tu proyecto ante el consejo de capibaras ancianas.",
+  hint: "Empieza fuerte y termina con un llamado a la acción.",
+  steps: [
+    {
+      situation: "¿Cómo inicias tu presentación?",
+      options: [
+        { text: "Con una historia breve y relevante", correct: true, points: 30 },
+        { text: "Disculpándote por estar nervioso", correct: false, points: 0 },
+        { text: "Leyendo un texto sin mirar al público", correct: false, points: 0 },
+      ],
+      feedback: {
+        correct: "¡Muy bien! Una historia engancha y conecta con la audiencia.",
+        incorrect: "Lo mejor es captar la atención desde el inicio.",
+      },
+    },
+  ],
+}
+</file>
+
+<file path="lib/progress.ts">
+import { doc, setDoc, getDoc, collection, getDocs, query, orderBy, limit } from "firebase/firestore"
+import { db } from "./firebase"
+
+// 🔹 Guardar progreso del usuario
+export async function saveProgress(userId: string, progress: any) {
+    try {
+        await setDoc(doc(db, "progress", userId), progress, { merge: true })
+        console.log("✅ Progreso guardado")
+    } catch (error) {
+        console.error("❌ Error al guardar progreso:", error)
+    }
+}
+
+// 🔹 Leer progreso del usuario
+export async function getProgress(userId: string) {
+    try {
+        const ref = doc(db, "progress", userId)
+        const snap = await getDoc(ref)
+
+        if (snap.exists()) {
+            return snap.data()
+        } else {
+            return null // No tiene progreso aún
+        }
+    } catch (error) {
+        console.error("❌ Error al leer progreso:", error)
+    }
+}
+
+// 🔹 Actualizar y verificar racha del usuario
+export async function updateStreak(userId: string, displayName?: string) {
+    const today = new Date()
+    const todayStr = today.toISOString().split("T")[0] // YYYY-MM-DD
+
+    const ref = doc(db, "progress", userId)
+    const snap = await getDoc(ref)
+
+    if (snap.exists()) {
+        const data = snap.data()
+        const lastLogin = data.lastLogin
+        const streak = data.streak || 0
+
+        if (lastLogin === todayStr) {
+            // Ya entró hoy → no cambiar
+            return { streak, lastLogin }
+        }
+
+        const yesterday = new Date()
+        yesterday.setDate(today.getDate() - 1)
+        const yesterdayStr = yesterday.toISOString().split("T")[0]
+
+        let newStreak = 1
+        if (lastLogin === yesterdayStr) {
+            newStreak = streak + 1 // siguió la racha
+        }
+
+        await setDoc(ref, {
+            ...data,
+            name: displayName || data.name || "Jugador Anónimo",
+            streak: newStreak,
+            lastLogin: todayStr,
+        }, { merge: true })
+
+        return { streak: newStreak, lastLogin: todayStr }
+    } else {
+        // Primera vez que entra
+        await setDoc(ref, {
+            name: displayName || "Jugador Anónimo",
+            streak: 1,
+            lastLogin: todayStr,
+            level: 1,
+            points: 0
+        })
+        return { streak: 1, lastLogin: todayStr }
+    }
+}
+
+// 🔹 Obtener ranking de rachas (Leaderboard)
+export async function getLeaderboard(top: number = 10) {
+    try {
+        const q = query(
+            collection(db, "progress"),
+            orderBy("streak", "desc"),
+            limit(top)
+        )
+
+        const querySnapshot = await getDocs(q)
+        const leaderboard: any[] = []
+
+        querySnapshot.forEach((doc) => {
+            leaderboard.push({
+                id: doc.id,
+                ...doc.data()
+            })
+        })
+
+        return leaderboard
+    } catch (error) {
+        console.error("❌ Error al cargar leaderboard:", error)
+        return []
+    }
+}
+</file>
+
+<file path="lib/utils.ts">
+import { clsx, type ClassValue } from "clsx"
+import { twMerge } from "tailwind-merge"
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+</file>
+
+<file path="next.config.ts">
+// next.config.ts
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  eslint: {
+    // No detiene el build si hay errores de ESLint
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    // No detiene el build si hay errores de TypeScript
+    ignoreBuildErrors: true,
+  },
+};
+
+export default nextConfig;
+</file>
 
 <file path="playground/AssessmentEngine.tsx">
 "use client"
@@ -1362,1252 +2651,6 @@ export default function RoleplayLevel({
 }
 </file>
 
-<file path=".gitignore">
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
-/node_modules
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
-
-# testing
-/coverage
-
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
-.DS_Store
-*.pem
-
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-
-# env files (can opt-in for committing if needed)
-.env*
-
-# vercel
-.vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-</file>
-
-<file path="app/globals.css">
-@import "tailwindcss";
-@import "tw-animate-css";
-
-@custom-variant dark (&:is(.dark *));
-
-:root {
-  /* Updated color tokens to match jungle-themed gamified design for Gen Z */
-  --background: #ffffff;
-  --foreground: #374151;
-  --card: #f0fdf4;
-  --card-foreground: #1f2937;
-  --popover: #ffffff;
-  --popover-foreground: #374151;
-  --primary: #15803d;
-  --primary-foreground: #ffffff;
-  --secondary: #84cc16;
-  --secondary-foreground: #1f2937;
-  --muted: #f0fdf4;
-  --muted-foreground: #4b5563;
-  --accent: #6366f1;
-  --accent-foreground: #ffffff;
-  --destructive: #f87171;
-  --destructive-foreground: #ffffff;
-  --border: #d1d5db;
-  --input: #f8fafc;
-  --ring: #84cc16;
-  --chart-1: #6366f1;
-  --chart-2: #fbbf24;
-  --chart-3: #f472b6;
-  --chart-4: #6ee7b7;
-  --chart-5: #60a5fa;
-  --radius: 0.5rem;
-  --sidebar: #f0fdf4;
-  --sidebar-foreground: #374151;
-  --sidebar-primary: #15803d;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #84cc16;
-  --sidebar-accent-foreground: #1f2937;
-  --sidebar-border: #d1d5db;
-  --sidebar-ring: #84cc16;
-}
-
-.dark {
-  /* Updated dark mode colors to maintain jungle theme with better contrast */
-  --background: #0f172a;
-  --foreground: #f1f5f9;
-  --card: #1e293b;
-  --card-foreground: #f1f5f9;
-  --popover: #1e293b;
-  --popover-foreground: #f1f5f9;
-  --primary: #22c55e;
-  --primary-foreground: #0f172a;
-  --secondary: #84cc16;
-  --secondary-foreground: #0f172a;
-  --muted: #334155;
-  --muted-foreground: #94a3b8;
-  --accent: #6366f1;
-  --accent-foreground: #f1f5f9;
-  --destructive: #f87171;
-  --destructive-foreground: #f1f5f9;
-  --border: #334155;
-  --input: #334155;
-  --ring: #84cc16;
-  --chart-1: #6366f1;
-  --chart-2: #fbbf24;
-  --chart-3: #f472b6;
-  --chart-4: #6ee7b7;
-  --chart-5: #60a5fa;
-  --sidebar: #1e293b;
-  --sidebar-foreground: #f1f5f9;
-  --sidebar-primary: #22c55e;
-  --sidebar-primary-foreground: #0f172a;
-  --sidebar-accent: #84cc16;
-  --sidebar-accent-foreground: #0f172a;
-  --sidebar-border: #334155;
-  --sidebar-ring: #84cc16;
-}
-
-@theme inline {
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
-}
-
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-}
-
-/* Added custom animations for gamification elements */
-@keyframes bounce-in {
-  0% {
-    transform: scale(0.3);
-    opacity: 0;
-  }
-  50% {
-    transform: scale(1.05);
-  }
-  70% {
-    transform: scale(0.9);
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-@keyframes pulse-glow {
-  0%,
-  100% {
-    box-shadow: 0 0 5px rgba(132, 204, 22, 0.5);
-  }
-  50% {
-    box-shadow: 0 0 20px rgba(132, 204, 22, 0.8);
-  }
-}
-
-.animate-bounce-in {
-  animation: bounce-in 0.6s ease-out;
-}
-
-.animate-pulse-glow {
-  animation: pulse-glow 2s ease-in-out infinite;
-}
-</file>
-
-<file path="components.json">
-{
-  "$schema": "https://ui.shadcn.com/schema.json",
-  "style": "new-york",
-  "rsc": true,
-  "tsx": true,
-  "tailwind": {
-    "config": "",
-    "css": "app/globals.css",
-    "baseColor": "neutral",
-    "cssVariables": true,
-    "prefix": ""
-  },
-  "iconLibrary": "lucide",
-  "aliases": {
-    "components": "@/components",
-    "utils": "@/lib/utils",
-    "ui": "@/components/ui",
-    "lib": "@/lib",
-    "hooks": "@/hooks"
-  }
-}
-</file>
-
-<file path="components/AuthProvider.tsx">
-"use client"
-
-import { ReactNode, createContext, useContext, useEffect, useState } from "react"
-import { onAuthStateChanged, User } from "firebase/auth"
-import { auth } from "@/lib/firebase"
-
-type AuthContextType = { user: User | null; loading: boolean }
-const AuthContext = createContext<AuthContextType>({ user: null, loading: true })
-
-export function useAuth() {
-    return useContext(AuthContext)
-}
-
-export function AuthProvider({ children }: { children: ReactNode }) {
-    const [user, setUser] = useState<User | null>(null)
-    const [loading, setLoading] = useState(true)
-
-    useEffect(() => {
-        const unsub = onAuthStateChanged(auth, (u) => {
-            setUser(u)
-            setLoading(false)
-        })
-        return () => unsub()
-    }, [])
-
-    return <AuthContext.Provider value={{ user, loading }}>{children}</AuthContext.Provider>
-}
-</file>
-
-<file path="components/CourseCard.tsx">
-"use client"
-
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Progress } from "@/components/ui/progress"
-
-interface CourseCardProps {
-  course: {
-    id: string
-    title: string
-    description: string
-    icon: string
-    color: string
-    totalLevels: number
-    completedLevels: number
-  }
-  isActive?: boolean
-  onSelect: () => void
-  className?: string
-}
-
-export default function CourseCard({ course, isActive = false, onSelect, className = "" }: CourseCardProps) {
-  const progressPercentage = (course.completedLevels / course.totalLevels) * 100
-
-  return (
-    <Card
-      className={`
-        relative overflow-hidden cursor-pointer transition-all duration-300 border-2
-        ${
-          isActive
-            ? "border-amber-400 shadow-2xl scale-105 z-10"
-            : "border-amber-200 shadow-lg hover:shadow-xl opacity-75 hover:opacity-90"
-        }
-        ${className}
-      `}
-      onClick={onSelect}
-      style={{
-        aspectRatio: "3/4",
-        minHeight: "320px",
-      }}
-    >
-      <div className={`h-3 bg-gradient-to-r ${course.color}`} />
-
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="text-4xl mb-2">{course.icon}</div>
-          <div className="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-full font-medium">
-            {course.completedLevels}/{course.totalLevels}
-          </div>
-        </div>
-        <CardTitle className="text-lg text-amber-800 leading-tight">{course.title}</CardTitle>
-        <p className="text-sm text-amber-600 line-clamp-2">{course.description}</p>
-      </CardHeader>
-
-      <CardContent className="pt-0">
-        <div className="mb-4">
-          <div className="flex justify-between text-xs text-amber-700 mb-1">
-            <span>Progreso</span>
-            <span>{Math.round(progressPercentage)}%</span>
-          </div>
-          <Progress value={progressPercentage} className="h-2" />
-        </div>
-
-        <Button
-          className={`w-full ${
-            isActive
-              ? "bg-amber-500 hover:bg-amber-600 text-white shadow-md"
-              : "bg-amber-100 hover:bg-amber-200 text-amber-800"
-          }`}
-          onClick={(e) => {
-            e.stopPropagation()
-            onSelect()
-          }}
-        >
-          {course.completedLevels === 0 ? "Comenzar" : "Continuar"}
-        </Button>
-      </CardContent>
-
-      {course.completedLevels === course.totalLevels && (
-        <div className="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full font-bold">
-          ✓ Completado
-        </div>
-      )}
-    </Card>
-  )
-}
-</file>
-
-<file path="components/CourseList.tsx">
-"use client"
-
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import {
-  MessageCircle,
-  Volume2,
-  Eye,
-  Users,
-  Presentation,
-  Play,
-  Lock,
-  CheckCircle,
-} from "lucide-react"
-
-interface Level {
-  id: number
-  title: string
-  type: "roleplay" | "quiz" | "story" | "video" | "interactive"
-  duration: number
-  xpReward: number
-  coinReward: number
-  isCompleted: boolean
-  isUnlocked: boolean
-}
-
-interface CourseListProps {
-  levels: Level[]
-  userData: any
-  onBack: () => void
-  onStartLevel: (levelId: number) => void
-}
-
-export default function CourseList({ levels, userData, onBack, onStartLevel }: CourseListProps) {
-  const getLevelIcon = (type: string) => {
-    switch (type) {
-      case "roleplay":
-        return <MessageCircle className="w-6 h-6 text-blue-500" />
-      case "interactive":
-        return <Volume2 className="w-6 h-6 text-green-500" />
-      case "video":
-        return <Eye className="w-6 h-6 text-purple-500" />
-      case "story":
-        return <Users className="w-6 h-6 text-orange-500" />
-      case "quiz":
-        return <Presentation className="w-6 h-6 text-red-500" />
-      default:
-        return <Play className="w-6 h-6" />
-    }
-  }
-
-  return (
-    <div
-      className="relative min-h-screen bg-cover bg-center bg-no-repeat"
-      style={{
-        backgroundImage: `url('/jungle-adventure-background.jpg')`, // cambia por el fondo que quieras
-      }}
-    >
-      {/* Degradado encima del fondo */}
-      <div className="absolute inset-0 bg-gradient-to-br from-amber-900/30 via-orange-900/20 to-yellow-900/30"></div>
-
-      <div className="relative z-10 max-w-5xl mx-auto px-6 py-12 space-y-8">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-6">
-          <Button
-            variant="outline"
-            onClick={onBack}
-            className="border-amber-300 text-amber-700 hover:bg-amber-50"
-          >
-            ← Volver
-          </Button>
-          <h1 className="text-2xl font-bold text-white drop-shadow-md">
-            Comunicación Efectiva
-          </h1>
-          <div className="text-3xl animate-bounce">🦫</div>
-        </div>
-
-        {/* Grid de niveles */}
-        <div className="grid gap-8">
-          {levels.map((level) => {
-            const isCompleted = userData.completedLevels.includes(level.id)
-
-            return (
-              <Card
-                key={level.id}
-                className={`relative overflow-hidden rounded-2xl shadow-xl transition-all duration-300
-                ${level.isUnlocked ? "cursor-pointer hover:scale-[1.02]" : "opacity-50"}
-                ${isCompleted ? "border-green-500 bg-green-50" : "border-amber-200 bg-white/90 backdrop-blur-md"}`}
-              >
-                <div
-                  className="absolute inset-0 opacity-15"
-                  style={{
-                    backgroundImage: `url('/assets/worlds/selva.png')`, // 👈 aquí puedes cambiar por mundo específico
-                    backgroundSize: "cover",
-                    backgroundPosition: "center",
-                  }}
-                ></div>
-
-                <CardContent className="p-6 relative z-10">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="relative">
-                        {isCompleted ? (
-                          <div className="relative">
-                            <CheckCircle className="w-12 h-12 text-green-500" />
-                            <div className="absolute -top-1 -right-1 text-xl">✨</div>
-                          </div>
-                        ) : level.isUnlocked ? (
-                          <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-600 rounded-full flex items-center justify-center text-white font-bold shadow-lg">
-                            {level.id}
-                          </div>
-                        ) : (
-                          <Lock className="w-12 h-12 text-gray-400" />
-                        )}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          {getLevelIcon(level.type)}
-                          <h3 className="text-lg font-bold text-amber-800">{level.title}</h3>
-                        </div>
-                        <div className="flex items-center gap-4 text-sm text-amber-600">
-                          <span>⏱️ {level.duration} min</span>
-                          <span>⭐ {level.xpReward} XP</span>
-                          <span>🪙 {level.coinReward} monedas</span>
-                          <Badge variant="secondary" className="lowercase">
-                            {level.type}
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-
-                    {level.isUnlocked && (
-                      <Button
-                        onClick={() => onStartLevel(level.id)}
-                        disabled={!level.isUnlocked}
-                        className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white shadow-lg"
-                      >
-                        {isCompleted ? "Repetir" : "Jugar"}
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
-      </div>
-    </div>
-  )
-}
-</file>
-
-<file path="components/Dashboard.tsx">
-"use client"
-import { useEffect, useState } from "react"
-import { useAuth } from "./AuthProvider"
-import { getProgress, saveProgress, updateStreak, getLeaderboard } from "@/lib/progress"
-
-export default function Dashboard() {
-    const { user } = useAuth()
-    const [progress, setProgress] = useState<any>(null)
-    const [streak, setStreak] = useState<number | null>(null)
-    const [leaders, setLeaders] = useState<any[]>([])
-
-    // 🔹 Cargar progreso, racha y ranking
-    useEffect(() => {
-        if (user) {
-            // Leer progreso guardado
-            getProgress(user.uid).then((data) => {
-                if (data) setProgress(data)
-                else setProgress({ level: 1, points: 0 })
-            })
-
-            // Actualizar racha
-            updateStreak(user.uid, user.displayName || "Jugador Anónimo").then((data) => {
-                setStreak(data?.streak || 1)
-            })
-        }
-
-        // Ranking visible para todos (incluso invitados)
-        getLeaderboard(10).then((data) => {
-            setLeaders(data)
-        })
-    }, [user])
-
-    // 🔹 Actualizar progreso (sumar puntos)
-    const handleUpdate = async () => {
-        if (user && progress) {
-            const newProgress = { ...progress, points: progress.points + 10 }
-            setProgress(newProgress)
-            await saveProgress(user.uid, newProgress)
-        }
-    }
-
-    return (
-        <div style={{ padding: "20px", fontFamily: "Arial" }}>
-            {/* Si hay usuario logueado */}
-            {user ? (
-                <div>
-                    <h1>Hola {user.displayName} 👋</h1>
-
-                    <div style={{
-                        marginTop: "15px",
-                        padding: "15px",
-                        border: "2px solid #eee",
-                        borderRadius: "12px",
-                        maxWidth: "320px"
-                    }}>
-                        <p>⭐ Nivel: {progress?.level}</p>
-                        <p>🎯 Puntos: {progress?.points}</p>
-                        <p style={{ fontSize: "20px", fontWeight: "bold", color: "orangered" }}>
-                            🔥 Racha: {streak} {streak === 1 ? "día" : "días"}
-                        </p>
-                    </div>
-
-                    <button
-                        onClick={handleUpdate}
-                        style={{
-                            marginTop: "20px",
-                            padding: "10px 15px",
-                            background: "orange",
-                            border: "none",
-                            borderRadius: "8px",
-                            color: "white",
-                            cursor: "pointer",
-                            fontSize: "16px"
-                        }}
-                    >
-                        ➕ Sumar 10 puntos
-                    </button>
-                </div>
-            ) : (
-                <h2>👋 Bienvenido invitado</h2>
-            )}
-
-            {/* Leaderboard visible siempre */}
-            <div style={{ marginTop: "30px" }}>
-                <h2>🏆 Ranking de Rachas</h2>
-                {leaders.length === 0 && <p>No hay jugadores aún.</p>}
-
-                <ol style={{ paddingLeft: "20px" }}>
-                    {leaders.map((player, index) => (
-                        <li key={player.id} style={{ marginBottom: "8px" }}>
-                            <span style={{ fontWeight: "bold" }}>#{index + 1}</span>{" "}
-                            {player.name || "Jugador Anónimo"} → 🔥 {player.streak} días
-                        </li>
-                    ))}
-                </ol>
-            </div>
-        </div>
-    )
-}
-</file>
-
-<file path="components/Leaderboard.tsx">
-"use client"
-import { useEffect, useState } from "react"
-import { getLeaderboard } from "@/lib/progress"
-
-export default function Leaderboard() {
-    const [leaders, setLeaders] = useState<any[]>([])
-
-    useEffect(() => {
-        getLeaderboard(10).then((data) => {
-            setLeaders(data)
-        })
-    }, [])
-
-    return (
-        <div style={{ marginTop: "30px" }}>
-            <h2>🏆 Ranking de Rachas</h2>
-            {leaders.length === 0 && <p>No hay jugadores aún.</p>}
-
-            <ol style={{ paddingLeft: "20px" }}>
-                {leaders.map((user, index) => (
-                    <li key={user.id} style={{ marginBottom: "8px" }}>
-                        <span style={{ fontWeight: "bold" }}>
-                            #{index + 1}
-                        </span>{" "}
-                        {user.name || "Jugador Anónimo"} → 🔥 {user.streak} días
-                    </li>
-                ))}
-            </ol>
-        </div>
-    )
-}
-</file>
-
-<file path="components/ui/badge.tsx">
-import * as React from "react"
-import { Slot } from "@radix-ui/react-slot"
-import { cva, type VariantProps } from "class-variance-authority"
-
-import { cn } from "@/lib/utils"
-
-const badgeVariants = cva(
-  "inline-flex items-center justify-center rounded-md border px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow] overflow-hidden",
-  {
-    variants: {
-      variant: {
-        default:
-          "border-transparent bg-primary text-primary-foreground [a&]:hover:bg-primary/90",
-        secondary:
-          "border-transparent bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90",
-        destructive:
-          "border-transparent bg-destructive text-white [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
-        outline:
-          "text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-    },
-  }
-)
-
-function Badge({
-  className,
-  variant,
-  asChild = false,
-  ...props
-}: React.ComponentProps<"span"> &
-  VariantProps<typeof badgeVariants> & { asChild?: boolean }) {
-  const Comp = asChild ? Slot : "span"
-
-  return (
-    <Comp
-      data-slot="badge"
-      className={cn(badgeVariants({ variant }), className)}
-      {...props}
-    />
-  )
-}
-
-export { Badge, badgeVariants }
-</file>
-
-<file path="components/ui/card.tsx">
-import * as React from "react"
-
-import { cn } from "@/lib/utils"
-
-function Card({ className, ...props }: React.ComponentProps<"div">) {
-  return (
-    <div
-      data-slot="card"
-      className={cn(
-        "bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm",
-        className
-      )}
-      {...props}
-    />
-  )
-}
-
-function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
-  return (
-    <div
-      data-slot="card-header"
-      className={cn(
-        "@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6",
-        className
-      )}
-      {...props}
-    />
-  )
-}
-
-function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
-  return (
-    <div
-      data-slot="card-title"
-      className={cn("leading-none font-semibold", className)}
-      {...props}
-    />
-  )
-}
-
-function CardDescription({ className, ...props }: React.ComponentProps<"div">) {
-  return (
-    <div
-      data-slot="card-description"
-      className={cn("text-muted-foreground text-sm", className)}
-      {...props}
-    />
-  )
-}
-
-function CardAction({ className, ...props }: React.ComponentProps<"div">) {
-  return (
-    <div
-      data-slot="card-action"
-      className={cn(
-        "col-start-2 row-span-2 row-start-1 self-start justify-self-end",
-        className
-      )}
-      {...props}
-    />
-  )
-}
-
-function CardContent({ className, ...props }: React.ComponentProps<"div">) {
-  return (
-    <div
-      data-slot="card-content"
-      className={cn("px-6", className)}
-      {...props}
-    />
-  )
-}
-
-function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
-  return (
-    <div
-      data-slot="card-footer"
-      className={cn("flex items-center px-6 [.border-t]:pt-6", className)}
-      {...props}
-    />
-  )
-}
-
-export {
-  Card,
-  CardHeader,
-  CardFooter,
-  CardTitle,
-  CardAction,
-  CardDescription,
-  CardContent,
-}
-</file>
-
-<file path="components/ui/progress.tsx">
-"use client"
-
-import * as React from "react"
-import * as ProgressPrimitive from "@radix-ui/react-progress"
-
-import { cn } from "@/lib/utils"
-
-function Progress({
-  className,
-  value,
-  ...props
-}: React.ComponentProps<typeof ProgressPrimitive.Root>) {
-  return (
-    <ProgressPrimitive.Root
-      data-slot="progress"
-      className={cn(
-        "bg-amber-400/20 relative h-2 w-full overflow-hidden rounded-full",
-        className
-      )}
-      {...props}
-    >
-      <ProgressPrimitive.Indicator
-        data-slot="progress-indicator"
-        className="bg-amber-800 h-full w-full flex-1 transition-all"
-        style={{ transform: `translateX(-${100 - (value || 0)}%)` }}
-      />
-    </ProgressPrimitive.Root>
-  )
-}
-
-export { Progress }
-</file>
-
-<file path="eslint.config.mjs">
-import { dirname } from "path";
-import { fileURLToPath } from "url";
-import { FlatCompat } from "@eslint/eslintrc";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-});
-
-const eslintConfig = [
-  ...compat.config({
-    extends: ["next/core-web-vitals", "next/typescript"],
-    rules: {
-      "@typescript-eslint/no-explicit-any": "off",
-      "@typescript-eslint/no-unused-vars": "off"
-    }
-  })
-];
-
-export default eslintConfig;
-</file>
-
-<file path="lib/confetti.ts">
-import confetti from "canvas-confetti"
-
-export function launchConfetti() {
-  confetti({
-    particleCount: 100,
-    spread: 70,
-    origin: { y: 0.6 },
-    colors: ["#FFD700", "#FF69B4", "#87CEFA", "#32CD32"]
-  })
-}
-</file>
-
-<file path="lib/levelBackgrounds.ts">
-export const levelBackgrounds: Record<string, string> = {
-  selva: "/assets/worlds/selva.png",
-  montana: "/assets/worlds/montana.png",
-  rio: "/assets/worlds/rio.png",
-  mercado: "/assets/worlds/mercado.png",
-  ciudad: "/assets/worlds/ciudad.png",
-}
-</file>
-
-<file path="lib/levels.ts">
-import { Level } from "@/lib/userTypes"
-
-/**
- * 🔹 Aquí organizamos los cursos por categoría
- * Cada curso tiene sus niveles (quiz / roleplay por ahora).
- * En el futuro puedes meter más tipos: "interactive", "video", etc.
- */
-export const courses: Record<string, Level[]> = {
-  communication: [
-    {
-      id: 1,
-      title: "Primeros Encuentros",
-      type: "roleplay",
-      duration: 8,
-      xpReward: 50,
-      coinReward: 20,
-      isCompleted: false,
-      isUnlocked: true,
-      world: "selva",
-    },
-    {
-      id: 2,
-      title: "Escucha Activa",
-      type: "quiz",
-      duration: 6,
-      xpReward: 40,
-      coinReward: 15,
-      isCompleted: false,
-      isUnlocked: true,
-      world: "montana",
-    },
-    {
-      id: 3,
-      title: "Comunicación No Verbal",
-      type: "quiz",
-      duration: 7,
-      xpReward: 45,
-      coinReward: 18,
-      isCompleted: false,
-      isUnlocked: false,
-      world: "rio",
-    },
-    {
-      id: 4,
-      title: "Resolviendo Malentendidos",
-      type: "roleplay",
-      duration: 9,
-      xpReward: 60,
-      coinReward: 25,
-      isCompleted: false,
-      isUnlocked: false,
-      world: "ciudad",
-    },
-  ],
-
-  leadership: [
-    {
-      id: 1,
-      title: "Liderazgo Positivo",
-      type: "quiz",
-      duration: 6,
-      xpReward: 40,
-      coinReward: 15,
-      isCompleted: false,
-      isUnlocked: true,
-      world: "mercado",
-    },
-    {
-      id: 2,
-      title: "Tomando Decisiones Difíciles",
-      type: "roleplay",
-      duration: 10,
-      xpReward: 70,
-      coinReward: 30,
-      isCompleted: false,
-      isUnlocked: false,
-      world: "rio",
-    },
-  ],
-
-  creativity: [
-    {
-      id: 1,
-      title: "Pensamiento Lateral",
-      type: "quiz",
-      duration: 7,
-      xpReward: 45,
-      coinReward: 20,
-      isCompleted: false,
-      isUnlocked: true,
-      world: "mercado",
-    },
-    {
-      id: 2,
-      title: "Improvisación en Equipo",
-      type: "roleplay",
-      duration: 8,
-      xpReward: 55,
-      coinReward: 22,
-      isCompleted: false,
-      isUnlocked: false,
-      world: "selva",
-    },
-  ],
-}
-
-/**
- * 🔹 Helper para obtener todos los niveles de todos los cursos
- * (por si quieres listarlos en una sola vista de roadmap)
- */
-export const allLevels: Level[] = Object.values(courses).flat()
-</file>
-
-<file path="lib/levels/index.ts">
-import { roleplayLevel1 } from "./roleplayLevel1"
-import { quizLevel1 } from "./quizLevel1"
-
-export const levelsMap: Record<number, any> = {
-  1: roleplayLevel1,
-  2: quizLevel1,
-}
-</file>
-
-<file path="lib/levels/quizLevel1.ts">
-// lib/levels/quizLevel1.ts
-export const quizLevel1 = {
-  id: 2,
-  title: "Presentaciones Efectivas",
-  type: "quiz" as const,
-  duration: 10,
-  xpReward: 60,
-  coinReward: 25,
-  background: "assets/worlds/montana.png",
-  story:
-    "Debes presentar tu proyecto ante el consejo de capibaras ancianas. Tu misión es demostrar claridad, seguridad y lograr que todos te entiendan.",
-  hint: "Una buena presentación engancha desde el inicio, es clara y termina con un llamado a la acción.",
-  steps: [
-    {
-      situation: "¿Cuál es la mejor manera de iniciar tu presentación?",
-      options: [
-        { text: "Con una historia breve relacionada al tema", correct: true, points: 20 },
-        { text: "Con estadísticas y datos duros", correct: false, points: 5 },
-        { text: "Disculpándome por posibles errores", correct: false, points: 0 },
-      ],
-      feedback: {
-        correct: "¡Excelente! Las historias capturan atención y crean conexión emocional inmediata.",
-        incorrect: "Las historias conectan emocionalmente desde el inicio y hacen tu mensaje memorable.",
-      },
-    },
-    {
-      situation: "Notas que el público se distrae. ¿Qué haces?",
-      options: [
-        { text: "Hago una pregunta directa o cambio el ritmo", correct: true, points: 20 },
-        { text: "Continúo como si nada pasara", correct: false, points: 0 },
-        { text: "Hablo más fuerte para captar atención", correct: false, points: 0 },
-      ],
-      feedback: {
-        correct: "¡Muy bien! Involucrar al público recupera su atención.",
-        incorrect: "Cuando pierdes atención, involucra al público con preguntas o cambios de ritmo.",
-      },
-    },
-  ],
-}
-</file>
-
-<file path="lib/levels/roleplayLevel1.ts">
-// lib/levels/roleplayLevel1.ts
-export const roleplayLevel1 = {
-  id: 1,
-  title: "Primeros Encuentros",
-  type: "roleplay" as const,
-  duration: 8,
-  xpReward: 50,
-  coinReward: 20,
-  background: "assets/worlds/selva.png",
-  story:
-    "Llegas a un campamento de capibaras exploradoras en medio de la selva. Es tu primer día y necesitas presentarte al grupo. Tu objetivo es causar una buena primera impresión.",
-  hint:
-    "Recuerda: una sonrisa genuina y mostrar interés por los demás son claves universales para conectar.",
-  steps: [
-    {
-      situation: "¿Cómo saludarás a una capibara desconocida que se acerca a ti?",
-      options: [
-        { text: "Con una sonrisa cálida y contacto visual directo", correct: true, points: 20 },
-        { text: "Con un saludo rápido sin mirar mucho", correct: false, points: 0 },
-        { text: "Esperando a que ella hable primero", correct: false, points: 0 },
-      ],
-      feedback: {
-        correct: "¡Excelente! El contacto visual y la sonrisa genuina transmiten confianza y apertura.",
-        incorrect: "Una sonrisa cálida y contacto visual directo son fundamentales para una buena primera impresión.",
-      },
-    },
-    {
-      situation: "Durante la conversación, ¿mantienes contacto visual?",
-      options: [
-        { text: "Sí, de manera natural y respetuosa", correct: true, points: 20 },
-        { text: "No, me da pena mirar a los ojos", correct: false, points: 0 },
-        { text: "Solo cuando hablo yo", correct: false, points: 5 },
-      ],
-      feedback: {
-        correct: "Perfecto. El contacto visual muestra interés genuino y construye confianza.",
-        incorrect: "El contacto visual natural (no fijo) demuestra respeto e interés por la otra persona.",
-      },
-    },
-    {
-      situation: "El interlocutor responde de manera tímida. ¿Qué haces?",
-      options: [
-        { text: "Le doy espacio y hablo más suave", correct: true, points: 20 },
-        { text: "Trato de animarlo hablando más fuerte", correct: false, points: 0 },
-        { text: "Cambio de tema inmediatamente", correct: false, points: 0 },
-      ],
-      feedback: {
-        correct: "¡Muy bien! Adaptar tu energía a la del otro muestra inteligencia emocional.",
-        incorrect: "Cuando alguien es tímido, es mejor bajar la intensidad y darle espacio para abrirse.",
-      },
-    },
-    {
-      situation: "Una capibara te ofrece la mano para saludar. ¿Qué tipo de apretón usas?",
-      options: [
-        { text: "Firme pero no excesivo, con contacto visual", correct: true, points: 20 },
-        { text: "Muy suave, casi sin fuerza", correct: false, points: 0 },
-        { text: "Muy fuerte para mostrar seguridad", correct: false, points: 0 },
-      ],
-      feedback: {
-        correct: "Excelente. Un apretón firme pero respetuoso transmite confianza sin intimidar.",
-        incorrect: "Un apretón de manos debe ser firme pero no excesivo, acompañado de contacto visual.",
-      },
-    },
-    {
-      situation: "Te presentan al grupo. ¿Cómo te presentas?",
-      options: [
-        { text: "Digo mi nombre y algo que me gusta hacer", correct: true, points: 20 },
-        { text: "Solo digo mi nombre", correct: false, points: 5 },
-        { text: "Hago una broma para romper el hielo", correct: false, points: 0 },
-      ],
-      feedback: {
-        correct: "¡Perfecto! Compartir un interés personal ayuda a otros a conectar contigo.",
-        incorrect: "Agregar algo personal (un interés o pasión) ayuda a crear conexiones más profundas.",
-      },
-    },
-  ],
-}
-</file>
-
-<file path="lib/progress.ts">
-import { doc, setDoc, getDoc, collection, getDocs, query, orderBy, limit } from "firebase/firestore"
-import { db } from "./firebase"
-
-// 🔹 Guardar progreso del usuario
-export async function saveProgress(userId: string, progress: any) {
-    try {
-        await setDoc(doc(db, "progress", userId), progress, { merge: true })
-        console.log("✅ Progreso guardado")
-    } catch (error) {
-        console.error("❌ Error al guardar progreso:", error)
-    }
-}
-
-// 🔹 Leer progreso del usuario
-export async function getProgress(userId: string) {
-    try {
-        const ref = doc(db, "progress", userId)
-        const snap = await getDoc(ref)
-
-        if (snap.exists()) {
-            return snap.data()
-        } else {
-            return null // No tiene progreso aún
-        }
-    } catch (error) {
-        console.error("❌ Error al leer progreso:", error)
-    }
-}
-
-// 🔹 Actualizar y verificar racha del usuario
-export async function updateStreak(userId: string, displayName?: string) {
-    const today = new Date()
-    const todayStr = today.toISOString().split("T")[0] // YYYY-MM-DD
-
-    const ref = doc(db, "progress", userId)
-    const snap = await getDoc(ref)
-
-    if (snap.exists()) {
-        const data = snap.data()
-        const lastLogin = data.lastLogin
-        const streak = data.streak || 0
-
-        if (lastLogin === todayStr) {
-            // Ya entró hoy → no cambiar
-            return { streak, lastLogin }
-        }
-
-        const yesterday = new Date()
-        yesterday.setDate(today.getDate() - 1)
-        const yesterdayStr = yesterday.toISOString().split("T")[0]
-
-        let newStreak = 1
-        if (lastLogin === yesterdayStr) {
-            newStreak = streak + 1 // siguió la racha
-        }
-
-        await setDoc(ref, {
-            ...data,
-            name: displayName || data.name || "Jugador Anónimo",
-            streak: newStreak,
-            lastLogin: todayStr,
-        }, { merge: true })
-
-        return { streak: newStreak, lastLogin: todayStr }
-    } else {
-        // Primera vez que entra
-        await setDoc(ref, {
-            name: displayName || "Jugador Anónimo",
-            streak: 1,
-            lastLogin: todayStr,
-            level: 1,
-            points: 0
-        })
-        return { streak: 1, lastLogin: todayStr }
-    }
-}
-
-// 🔹 Obtener ranking de rachas (Leaderboard)
-export async function getLeaderboard(top: number = 10) {
-    try {
-        const q = query(
-            collection(db, "progress"),
-            orderBy("streak", "desc"),
-            limit(top)
-        )
-
-        const querySnapshot = await getDocs(q)
-        const leaderboard: any[] = []
-
-        querySnapshot.forEach((doc) => {
-            leaderboard.push({
-                id: doc.id,
-                ...doc.data()
-            })
-        })
-
-        return leaderboard
-    } catch (error) {
-        console.error("❌ Error al cargar leaderboard:", error)
-        return []
-    }
-}
-</file>
-
-<file path="lib/utils.ts">
-import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
-}
-</file>
-
-<file path="next.config.ts">
-// next.config.ts
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
-  eslint: {
-    // No detiene el build si hay errores de ESLint
-    ignoreDuringBuilds: true,
-  },
-  typescript: {
-    // No detiene el build si hay errores de TypeScript
-    ignoreBuildErrors: true,
-  },
-};
-
-export default nextConfig;
-</file>
-
 <file path="postcss.config.mjs">
 const config = {
   plugins: ["@tailwindcss/postcss"],
@@ -2709,6 +2752,40 @@ export default function RootLayout({
 }
 </file>
 
+<file path="components/ui/progress.tsx">
+"use client"
+
+import * as React from "react"
+import * as ProgressPrimitive from "@radix-ui/react-progress"
+
+import { cn } from "@/lib/utils"
+
+function Progress({
+  className,
+  value,
+  ...props
+}: React.ComponentProps<typeof ProgressPrimitive.Root>) {
+  return (
+    <ProgressPrimitive.Root
+      data-slot="progress"
+      className={cn(
+        "bg-amber-400/20 relative h-2 w-full overflow-hidden rounded-full",
+        className
+      )}
+      {...props}
+    >
+      <ProgressPrimitive.Indicator
+        data-slot="progress-indicator"
+        className="bg-amber-800 h-full w-full flex-1 transition-all"
+        style={{ transform: `translateX(-${100 - (value || 0)}%)` }}
+      />
+    </ProgressPrimitive.Root>
+  )
+}
+
+export { Progress }
+</file>
+
 <file path="hooks/useSound.tsx">
 // hooks/useSound.ts
 import { useCallback } from "react"
@@ -2759,45 +2836,19 @@ setPersistence(auth, browserLocalPersistence).catch(() => {
 })
 </file>
 
-<file path="lib/userTypes.ts">
-export interface UserData {
-  level: number
-  xp: number
-  coins: number
-  gems: number
-  lives: number
-  maxLives: number
-  lastDailyChest: string | null
-  completedLevels: number[]
-  badges: string[]
-  currentPet: string
-  unlockedPets: string[]
-}
+<file path="lib/levels/index.ts">
+import { roleplayLevel1 } from "./communication/roleplayLevel1"
+import { quizLevel2 } from "./communication/quizLevel2"
+import { roleplayLevel3 } from "./communication/roleplayLevel3"
+import { quizLevel4 } from "./communication/quizLevel4"
+import { roleplayLevel5 } from "./communication/roleplayLevel5"
 
-export interface Pet {
-  id: string
-  name: string
-  icon: string
-  price: number
-  unlocked: boolean
-}
-
-export const pets: Pet[] = [
-  { id: "baby-capybara", name: "Capi Bebé", icon: "🐹", price: 0, unlocked: true },
-  { id: "adult-capybara", name: "Capi Adulto", icon: "🦫", price: 200, unlocked: false },
-  { id: "golden-capybara", name: "Capi Dorado", icon: "✨🦫", price: 1000, unlocked: false },
-  { id: "ninja-capybara", name: "Capi Ninja", icon: "🥷🦫", price: 1500, unlocked: false },
-]
-export interface Level {
-  id: number
-  title: string
-  type: "roleplay" | "quiz" | "story" | "video" | "interactive"
-  duration: number
-  xpReward: number
-  coinReward: number
-  isCompleted: boolean
-  isUnlocked: boolean
-  world: "selva" | "montana" | "rio" | "mercado" | "ciudad"
+export const levelsMap: Record<number, any> = {
+  1: roleplayLevel1,
+  2: quizLevel2,
+  3: roleplayLevel3,
+  4: quizLevel4,
+  5: roleplayLevel5,
 }
 </file>
 
@@ -2829,119 +2880,6 @@ export interface Level {
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   "exclude": ["node_modules"]
-}
-</file>
-
-<file path="app/level/[id]/page.tsx">
-"use client"
-
-import { useRouter } from "next/navigation"
-import LevelComponent from "@/components/LevelComponent"
-import { Level, UserData } from "@/lib/userTypes"
-import { useState } from "react"
-
-// 🔹 Definición de niveles de ejemplo (puedes moverlo a un lib si quieres)
-const communicationLevels: Level[] = [
-  {
-    id: 1,
-    title: "Primeros Encuentros",
-    type: "roleplay",
-    duration: 8,
-    xpReward: 50,
-    coinReward: 20,
-    isCompleted: false,
-    isUnlocked: true,
-    world: "selva",
-  },
-  {
-    id: 2,
-    title: "Escucha Activa",
-    type: "quiz",
-    duration: 6,
-    xpReward: 40,
-    coinReward: 15,
-    isCompleted: false,
-    isUnlocked: true,
-    world: "montana",
-  },
-]
-
-// 🔹 Datos iniciales del usuario (puedes reemplazar con Firestore si ya tienes auth)
-const initialUserData: UserData = {
-  level: 1,
-  xp: 0,
-  coins: 100,
-  gems: 5,
-  lives: 5,
-  maxLives: 5,
-  lastDailyChest: null,
-  completedLevels: [],
-  badges: [],
-  currentPet: "baby-capybara",
-  unlockedPets: ["baby-capybara"],
-}
-
-interface LevelPageProps {
-  params: {
-    id: string
-  }
-}
-
-export default function LevelPage({ params }: LevelPageProps) {
-  const router = useRouter()
-  const levelId = Number.parseInt(params.id)
-  const level = communicationLevels.find((lvl) => lvl.id === levelId)
-
-  const [userData, setUserData] = useState<UserData>(initialUserData)
-
-  if (!level) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Nivel no encontrado</h1>
-          <button
-            onClick={() => router.push("/")}
-            className="bg-amber-500 hover:bg-amber-600 text-white px-6 py-2 rounded-lg shadow-md"
-          >
-            ← Volver al inicio
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  const handleComplete = (xp: number, coins: number, badges: string[]) => {
-    setUserData((prev) => ({
-      ...prev,
-      xp: prev.xp + xp,
-      coins: prev.coins + coins,
-      completedLevels: [...prev.completedLevels, level.id],
-      badges: [...prev.badges, ...badges],
-    }))
-    router.push("/") // 👈 al completar, regresa al inicio (puedes cambiarlo a dashboard)
-  }
-
-  const handleBack = () => {
-    router.push("/") // 👈 salir sin completar
-  }
-
-  const handleLoseLife = () => {
-    setUserData((prev) => ({
-      ...prev,
-      lives: Math.max(0, prev.lives - 1),
-    }))
-  }
-
-  return (
-    <LevelComponent
-  levelId={level.id}             // antes tenías level={level}
-  type={level.type}              // agregamos el tipo para que sepa si es roleplay o quiz
-  userData={userData}
-  onComplete={handleComplete}
-  onBack={handleBack}
-  onLoseLife={handleLoseLife}
-/>
-  )
 }
 </file>
 
@@ -3080,6 +3018,48 @@ function Button({
 export { Button, buttonVariants }
 </file>
 
+<file path="lib/userTypes.ts">
+export interface UserData {
+  level: number
+  xp: number
+  coins: number
+  gems: number
+  lives: number
+  maxLives: number
+  lastDailyChest: string | null
+  completedLevels: number[]
+  badges: string[]
+  currentPet: string
+  unlockedPets: string[]
+}
+
+export interface Pet {
+  id: string
+  name: string
+  icon: string
+  price: number
+  unlocked: boolean
+}
+
+export const pets: Pet[] = [
+  { id: "baby-capybara", name: "Capi Bebé", icon: "🐹", price: 0, unlocked: true },
+  { id: "adult-capybara", name: "Capi Adulto", icon: "🦫", price: 200, unlocked: false },
+  { id: "golden-capybara", name: "Capi Dorado", icon: "✨🦫", price: 1000, unlocked: false },
+  { id: "ninja-capybara", name: "Capi Ninja", icon: "🥷🦫", price: 1500, unlocked: false },
+]
+export interface Level {
+  id: number
+  title: string
+  type: "roleplay" | "quiz" | "story" | "video" | "interactive"
+  duration: number
+  xpReward: number
+  coinReward: number
+  isCompleted: boolean
+  isUnlocked: boolean
+  world: "selva" | "montana" | "rio" | "mercado" | "campamento"
+}
+</file>
+
 <file path="package.json">
 {
   "name": "nu9ve-v5",
@@ -3123,6 +3103,118 @@ export { Button, buttonVariants }
 }
 </file>
 
+<file path="app/level/[id]/page.tsx">
+"use client"
+
+import { useRouter } from "next/navigation"
+import LevelComponent from "@/components/LevelComponent"
+import { Level, UserData } from "@/lib/userTypes"
+import { useState } from "react"
+
+// 🔹 Definición de niveles de ejemplo (puedes moverlo a un lib si quieres)
+const communicationLevels: Level[] = [
+  {
+    id: 1,
+    title: "Primeros Encuentros",
+    type: "roleplay",
+    duration: 8,
+    xpReward: 50,
+    coinReward: 20,
+    isCompleted: false,
+    isUnlocked: true,
+    world: "selva",
+  },
+  {
+    id: 2,
+    title: "Escucha Activa",
+    type: "quiz",
+    duration: 6,
+    xpReward: 40,
+    coinReward: 15,
+    isCompleted: false,
+    isUnlocked: true,
+    world: "montana",
+  },
+]
+
+// 🔹 Datos iniciales del usuario (puedes reemplazar con Firestore si ya tienes auth)
+const initialUserData: UserData = {
+  level: 1,
+  xp: 0,
+  coins: 100,
+  gems: 5,
+  lives: 5,
+  maxLives: 5,
+  lastDailyChest: null,
+  completedLevels: [],
+  badges: [],
+  currentPet: "baby-capybara",
+  unlockedPets: ["baby-capybara"],
+}
+
+interface LevelPageProps {
+  params: {
+    id: string
+  }
+}
+
+export default function LevelPage({ params }: LevelPageProps) {
+  const router = useRouter()
+  const levelId = Number.parseInt(params.id)
+  const level = communicationLevels.find((lvl) => lvl.id === levelId)
+
+  const [userData, setUserData] = useState<UserData>(initialUserData)
+
+  if (!level) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Nivel no encontrado</h1>
+          <button
+            onClick={() => router.push("/")}
+            className="bg-amber-500 hover:bg-amber-600 text-white px-6 py-2 rounded-lg shadow-md"
+          >
+            ← Volver al inicio
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  const handleComplete = (xp: number, coins: number, badges: string[]) => {
+    setUserData((prev) => ({
+      ...prev,
+      xp: prev.xp + xp,
+      coins: prev.coins + coins,
+      completedLevels: [...prev.completedLevels, level.id],
+      badges: [...prev.badges, ...badges],
+    }))
+    router.push("/") // 👈 al completar, regresa al inicio (puedes cambiarlo a dashboard)
+  }
+
+  const handleBack = () => {
+    router.push("/") // 👈 salir sin completar
+  }
+
+  const handleLoseLife = () => {
+    setUserData((prev) => ({
+      ...prev,
+      lives: Math.max(0, prev.lives - 1),
+    }))
+  }
+
+  return (
+    <LevelComponent
+  levelId={level.id}             // antes tenías level={level}
+  userData={userData}
+  onComplete={handleComplete}
+  onBack={handleBack}
+  onLoseLife={handleLoseLife}
+/>
+  )
+}
+</file>
+
 <file path="components/LevelComponent.tsx">
 "use client"
 
@@ -3134,12 +3226,10 @@ import { Heart, Lightbulb } from "lucide-react"
 import { launchConfetti } from "@/lib/confetti"
 import { UserData, pets } from "@/lib/userTypes"
 import useSound from "@/hooks/useSound"
-import { roleplayLevel1 } from "@/lib/levels/roleplayLevel1"
-import { quizLevel1 } from "../lib/levels/quizLevel1"
+import { levelsMap } from "@/lib/levels/index"
 
 interface LevelComponentProps {
   levelId: number
-  type: "roleplay" | "quiz" | "story" | "video" | "interactive"
   userData: UserData
   onBack: () => void
   onLoseLife: () => void
@@ -3148,7 +3238,7 @@ interface LevelComponentProps {
 
 export default function LevelComponent({
   levelId,
-  type,
+
   userData,
   onBack,
   onLoseLife,
@@ -3175,23 +3265,11 @@ export default function LevelComponent({
   const currentPet = pets.find((p) => p.id === userData.currentPet)
 
   // 🔹 obtener contenido del nivel (ejemplo con roleplayLevel1)
- const levelsMap: Record<number, any> = {
-  1: roleplayLevel1,
-  2: quizLevel1,
-  // 👆 aquí vas metiendo más niveles a medida que los crees
-}
 
 // escoger nivel según levelId
 const levelData = levelsMap[levelId]
 
-if (!levelData) {
-  return (
-    <div className="p-6 text-center">
-      <h2 className="text-xl font-bold mb-2">Nivel en construcción</h2>
-      <Button onClick={onBack}>← Volver</Button>
-    </div>
-  )
-}
+
 
   // --- helpers ---
   const stepIndex = pass === "first" ? currentIndex : retryQueue[retryPos]
@@ -3211,7 +3289,7 @@ if (!levelData) {
     setSelectedOption(i)
     const option = currentStep.options[i]
 
-    if (type === "roleplay") {
+    if (levelData.type === "roleplay") {
       // retry inmediato
       if (option.correct) {
         playSuccess2()
@@ -3250,7 +3328,7 @@ if (!levelData) {
   }
 
   const handleNext = () => {
-    if (type === "roleplay") {
+    if (levelData.type === "roleplay") {
       if (isCorrect) {
         if (currentIndex < levelData.steps.length - 1) {
           setCurrentIndex((i) => i + 1)
@@ -3335,7 +3413,7 @@ if (!levelData) {
           </div>
           <Progress
             value={
-              pass === "retry" && type === "quiz" ? 100 : ((stepIndex + 1) / levelData.steps.length) * 100
+              pass === "retry" &&  levelData.type === "quiz" ? 100 : ((stepIndex + 1) / levelData.steps.length) * 100
             }
           />
 
@@ -3556,7 +3634,7 @@ const communicationLevels: Level[] = [
     coinReward: 20,
     isCompleted: false,
     isUnlocked: true,
-    world: "selva",
+    world: "campamento",
   },
   {
     id: 2,
@@ -3571,14 +3649,14 @@ const communicationLevels: Level[] = [
   },
   {
     id: 3,
-    title: "quiz",
-    type: "quiz",
+    title: "Comunicacion no verbal",
+    type: "roleplay",
     duration: 10,
     xpReward: 60,
     coinReward: 25,
     isCompleted: false,
     isUnlocked: true,
-    world: "mercado",
+    world: "rio",
   },
   {
     id: 4,
@@ -3589,18 +3667,18 @@ const communicationLevels: Level[] = [
     coinReward: 30,
     isCompleted: false,
     isUnlocked: false,
-    world: "ciudad",
+    world: "mercado",
   },
   {
     id: 5,
     title: "Presentaciones Efectivas",
-    type: "quiz",
+    type: "roleplay",
     duration: 15,
     xpReward: 100,
     coinReward: 40,
     isCompleted: false,
     isUnlocked: false,
-    world: "rio",
+    world: "selva",
   },
 ]
 
@@ -4323,7 +4401,6 @@ export default function Nu9veAcademy() {
             {currentView === "level" && currentLevel && (
  <LevelComponent
   levelId={allLevels[currentLevel - 1].id}
-  type={allLevels[currentLevel - 1].type}
   userData={userData}
   onComplete={(xp, coins, badges) =>
     completeLevel(currentLevel, xp, coins, badges)
