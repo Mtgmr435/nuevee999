@@ -1,5 +1,5 @@
 "use client"
-
+export const dynamic = "force-dynamic"
 import CourseList from "@/components/CourseList"
 import { UserData, pets, Pet } from "@/lib/userTypes"
 import LevelComponent from "@/components/LevelComponent"

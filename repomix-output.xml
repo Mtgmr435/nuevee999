@@ -326,36 +326,6 @@ next-env.d.ts
 }
 </file>
 
-<file path="components/AuthProvider.tsx">
-"use client"
-
-import { ReactNode, createContext, useContext, useEffect, useState } from "react"
-import { onAuthStateChanged, User } from "firebase/auth"
-import { auth } from "@/lib/firebase"
-
-type AuthContextType = { user: User | null; loading: boolean }
-const AuthContext = createContext<AuthContextType>({ user: null, loading: true })
-
-export function useAuth() {
-    return useContext(AuthContext)
-}
-
-export function AuthProvider({ children }: { children: ReactNode }) {
-    const [user, setUser] = useState<User | null>(null)
-    const [loading, setLoading] = useState(true)
-
-    useEffect(() => {
-        const unsub = onAuthStateChanged(auth, (u) => {
-            setUser(u)
-            setLoading(false)
-        })
-        return () => unsub()
-    }, [])
-
-    return <AuthContext.Provider value={{ user, loading }}>{children}</AuthContext.Provider>
-}
-</file>
-
 <file path="components/CourseCard.tsx">
 "use client"
 
@@ -2752,6 +2722,47 @@ export default function RootLayout({
 }
 </file>
 
+<file path="components/AuthProvider.tsx">
+"use client"
+
+import { ReactNode, createContext, useContext, useEffect, useState } from "react"
+import { onAuthStateChanged, User } from "firebase/auth"
+import { auth } from "@/lib/firebase"
+
+type AuthContextType = { user: User | null; loading: boolean }
+const AuthContext = createContext<AuthContextType>({ user: null, loading: true })
+
+export function useAuth() {
+  return useContext(AuthContext)
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    // 🚨 Si auth es null (en server/SSR) → no inicializar
+    if (!auth) {
+      setLoading(false)
+      return
+    }
+
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setUser(u)
+      setLoading(false)
+    })
+
+    return () => unsub()
+  }, [])
+
+  return (
+    <AuthContext.Provider value={{ user, loading }}>
+      {children}
+    </AuthContext.Provider>
+  )
+}
+</file>
+
 <file path="components/ui/progress.tsx">
 "use client"
 
@@ -2801,41 +2812,6 @@ export default function useSound(url: string, volume: number = 0.5) {
 }
 </file>
 
-<file path="lib/firebase.ts">
-// lib/firebase.ts
-import { initializeApp, getApps, getApp } from "firebase/app"
-import {
-    getAuth,
-    GoogleAuthProvider,
-    setPersistence,
-    browserLocalPersistence,
-} from "firebase/auth"
-import { getFirestore } from "firebase/firestore"
-
-const firebaseConfig = {
-    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
-    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN!,
-    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID!,
-    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET!,
-    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID!,
-    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID!,
-}
-
-// Evita re-crear la app en HMR
-export const app = getApps().length ? getApp() : initializeApp(firebaseConfig)
-
-// Auth + proveedor Google
-export const auth = getAuth(app)
-export const googleProvider = new GoogleAuthProvider()
-export const db = getFirestore(app)
-googleProvider.setCustomParameters({ prompt: "select_account" })
-
-// Persistencia en el navegador
-setPersistence(auth, browserLocalPersistence).catch(() => {
-    // Silencia errores de persistencia (p.ej., privacidad del navegador)
-})
-</file>
-
 <file path="lib/levels/index.ts">
 import { roleplayLevel1 } from "./communication/roleplayLevel1"
 import { quizLevel2 } from "./communication/quizLevel2"
@@ -2880,67 +2856,6 @@ export const levelsMap: Record<number, any> = {
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   "exclude": ["node_modules"]
-}
-</file>
-
-<file path="components/LoginButton.tsx">
-"use client"
-
-import { signInWithPopup, signOut } from "firebase/auth"
-import { auth, googleProvider } from "@/lib/firebase"
-import { Button } from "@/components/ui/button"
-import { LogIn, LogOut } from "lucide-react"
-import { useState } from "react"
-import { useAuth } from "./AuthProvider"
-
-export default function LoginButton() {
-  
-    const { user } = useAuth()
-    const [loading, setLoading] = useState(false)
-
-    const handleLogin = async () => {
-        try {
-            setLoading(true)
-            await signInWithPopup(auth, googleProvider)
-        } finally {
-            setLoading(false)
-        }
-    }
-
-    const handleLogout = async () => {
-        try {
-            setLoading(true)
-            await signOut(auth)
-        } finally {
-            setLoading(false)
-        }
-    }
-
-    if (user) {
-        return (
-  <Button
-    onClick= {handleLogin}
-    disabled={loading}
-    variant="outline"
-    className="flex-1 border-amber-300 text-amber-700 text-lg px-8 py-4 rounded-xl shadow-md flex items-center justify-center gap-3"
-  >
-    <LogIn className="w-6 h-6" />
-    Iniciar Sesión con Google
-  </Button>
-)
-    }
-
-    return (
-  <Button
-    onClick={handleLogin}
-    disabled={loading}
-    variant="outline"
-    className="flex-1 border-amber-300 text-amber-700 text-lg px-8 py-4 rounded-xl shadow-md flex items-center justify-center gap-3"
-  >
-    <LogIn className="w-6 h-6" />
-    Iniciar Sesión con Google
-  </Button>
-)
 }
 </file>
 
@@ -3016,6 +2931,48 @@ function Button({
 }
 
 export { Button, buttonVariants }
+</file>
+
+<file path="lib/firebase.ts">
+// lib/firebase.ts
+import { initializeApp, getApps, getApp } from "firebase/app"
+import { getFirestore } from "firebase/firestore"
+import {
+  getAuth,
+  GoogleAuthProvider,
+  setPersistence,
+  browserLocalPersistence,
+} from "firebase/auth"
+
+// ⚡ Configuración con variables de entorno
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN!,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID!,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET!,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID!,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID!,
+}
+
+// ✅ Inicializar Firebase App (una sola vez)
+export const app = getApps().length ? getApp() : initializeApp(firebaseConfig)
+
+// ✅ Firestore funciona tanto en server como en client
+export const db = getFirestore(app)
+
+// ⚠️ Auth y Google Provider solo deben inicializarse en el navegador
+export let auth: ReturnType<typeof getAuth> | null = null
+export let googleProvider: GoogleAuthProvider | null = null
+
+if (typeof window !== "undefined") {
+  auth = getAuth(app)
+  googleProvider = new GoogleAuthProvider()
+  googleProvider.setCustomParameters({ prompt: "select_account" })
+
+  setPersistence(auth, browserLocalPersistence).catch(() => {
+    // Silenciar errores de persistencia en navegadores que bloquean localStorage
+  })
+}
 </file>
 
 <file path="lib/userTypes.ts">
@@ -3211,6 +3168,68 @@ export default function LevelPage({ params }: LevelPageProps) {
   onBack={handleBack}
   onLoseLife={handleLoseLife}
 />
+  )
+}
+</file>
+
+<file path="components/LoginButton.tsx">
+"use client"
+
+import { signInWithPopup, signOut } from "firebase/auth"
+import { auth, googleProvider } from "@/lib/firebase"
+import { Button } from "@/components/ui/button"
+import { LogIn, LogOut } from "lucide-react"
+import { useState } from "react"
+import { useAuth } from "./AuthProvider"
+
+export default function LoginButton() {
+  const { user } = useAuth()
+  const [loading, setLoading] = useState(false)
+
+  const handleLogin = async () => {
+    if (!auth || !googleProvider) return // 🚨 evitar error en SSR
+    try {
+      setLoading(true)
+      await signInWithPopup(auth, googleProvider)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleLogout = async () => {
+    if (!auth) return // 🚨 evitar error en SSR
+    try {
+      setLoading(true)
+      await signOut(auth)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (user) {
+    return (
+      <Button
+        onClick={handleLogout}
+        disabled={loading}
+        variant="outline"
+        className="flex-1 border-amber-300 text-amber-700 text-lg px-8 py-4 rounded-xl shadow-md flex items-center justify-center gap-3"
+      >
+        <LogOut className="w-6 h-6" />
+        Cerrar Sesión
+      </Button>
+    )
+  }
+
+  return (
+    <Button
+      onClick={handleLogin}
+      disabled={loading}
+      variant="outline"
+      className="flex-1 border-amber-300 text-amber-700 text-lg px-8 py-4 rounded-xl shadow-md flex items-center justify-center gap-3"
+    >
+      <LogIn className="w-6 h-6" />
+      Iniciar Sesión con Google
+    </Button>
   )
 }
 </file>

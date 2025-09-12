@@ -1,4 +1,5 @@
 // app/layout.tsx
+export const dynamic = "force-dynamic"
 import type React from "react"
 import type { Metadata } from "next"
 import { GeistSans } from "geist/font/sans"
