@@ -14,7 +14,8 @@ import LoginButton from "@/components/LoginButton"
 import Dashboard from "@/components/Dashboard"
 import { Level } from "@/lib/userTypes"
 import { allLevels } from "../lib/levels"
-
+import { updateStreak } from "@/lib/progress"
+import { useAuth } from "@/components/AuthProvider"
 
 import {
   Trophy,
@@ -341,6 +342,8 @@ export default function Nu9veAcademy() {
   const [currentView, setCurrentView] = useState<"welcome" | "dashboard" | "course" | "level" | "shop" | "profile">(
     "welcome",
   )
+  const { user } = useAuth()
+const [streak, setStreak] = useState<number>(0)
   const [showDailyChest, setShowDailyChest] = useState(true)
   const [chestAnimation, setChestAnimation] = useState(false)
   const [lifeTimer, setLifeTimer] = useState(0)
@@ -368,6 +371,13 @@ export default function Nu9veAcademy() {
     return () => clearInterval(interval)
   }, [lifeTimer])
 
+useEffect(() => {
+  if (user) {
+    updateStreak(user.uid, user.displayName || "Jugador Anónimo").then((data) => {
+      setStreak(data?.streak || 1)
+    })
+  }
+}, [user])
   // Check for daily chest availability
   useEffect(() => {
     const today = new Date().toDateString()
@@ -507,6 +517,7 @@ export default function Nu9veAcademy() {
 
 
   const renderDashboard = () => (
+    
     <div
       className="relative min-h-screen bg-cover bg-center bg-no-repeat"
       style={{
@@ -540,12 +551,17 @@ export default function Nu9veAcademy() {
               <span className="font-semibold text-cyan-800">{userData.gems}</span>
             </div>
             <div className="flex items-center gap-2">
+  <span className="text-xl">🔥</span>
+  <span className="font-semibold text-orange-600">{streak} días</span>
+</div>
+            <div className="flex items-center gap-2">
               <Heart className="w-5 h-5 text-red-500" />
               <span className="font-semibold text-red-800">
                 {userData.lives}/{userData.maxLives}
               </span>
               {userData.lives < userData.maxLives && (
                 <div className="text-xs text-red-600 ml-1">+1 en {15 - lifeTimer}s</div>
+                
               )}
             </div>
           </div>
