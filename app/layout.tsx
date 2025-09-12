@@ -1,5 +1,3 @@
-// app/layout.tsx
-export const dynamic = "force-dynamic"
 import type React from "react"
 import type { Metadata } from "next"
 import { GeistSans } from "geist/font/sans"
@@ -7,7 +5,13 @@ import { GeistMono } from "geist/font/mono"
 import { Analytics } from "@vercel/analytics/next"
 import { Suspense } from "react"
 import "./globals.css"
-import { AuthProvider } from "@/components/AuthProvider" // <— añade esto
+import dynamic from "next/dynamic"
+
+const AuthProvider = dynamic<{ children: React.ReactNode }>(
+  () =>
+    import("@/components/AuthProvider").then((mod) => mod.AuthProvider), // 👈 importante
+  { ssr: false }
+)
 
 export const metadata: Metadata = {
   title: "Nu9ve Academy - Habilidades Blandas Gamificadas",
@@ -17,15 +21,13 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{ children: React.ReactNode }>) {
+}: {
+  children: React.ReactNode
+}) {
   return (
     <html lang="es">
-      
-      <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable} antialiased`}>
-        <AuthProvider>
-          <Suspense fallback={null}>{children}</Suspense>
-        </AuthProvider>
-        <Analytics />
+      <body>
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   )
