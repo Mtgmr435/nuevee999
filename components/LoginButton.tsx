@@ -8,6 +8,7 @@ import { useState } from "react"
 import { useAuth } from "./AuthProvider"
 
 export default function LoginButton() {
+  
     const { user } = useAuth()
     const [loading, setLoading] = useState(false)
 
@@ -32,7 +33,7 @@ export default function LoginButton() {
     if (user) {
         return (
   <Button
-    onClick={handleLogin}
+    onClick= {handleLogin}
     disabled={loading}
     variant="outline"
     className="flex-1 border-amber-300 text-amber-700 text-lg px-8 py-4 rounded-xl shadow-md flex items-center justify-center gap-3"

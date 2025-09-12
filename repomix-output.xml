@@ -49,8 +49,10 @@ components.json
 components/AssessmentEngine.tsx
 components/AuthProvider.tsx
 components/CourseCard.tsx
+components/Dashboard.tsx
 components/DeckCarousel.tsx
 components/FirstEncountersLevel.tsx
+components/Leaderboard.tsx
 components/LevelComponent.tsx
 components/LoginButton.tsx
 components/QuizLevel.tsx
@@ -60,7 +62,11 @@ components/ui/button.tsx
 components/ui/card.tsx
 components/ui/progress.tsx
 eslint.config.mjs
+hooks/useSound.tsx
+lib/confetti.ts
 lib/firebase.ts
+lib/progress.ts
+lib/userTypes.ts
 lib/utils.ts
 next.config.ts
 package.json
@@ -76,6 +82,66 @@ tsconfig.json
 
 <files>
 This section contains the contents of the repository's files.
+
+<file path="hooks/useSound.tsx">
+// hooks/useSound.tsx
+"use client"
+import { useCallback } from "react"
+
+export default function useSound(path: string, volume: number = 0.6) {
+  const play = useCallback(() => {
+    const audio = new Audio(path)
+    audio.volume = volume
+    audio.play().catch(() => {})
+  }, [path, volume])
+
+  return play
+}
+</file>
+
+<file path="lib/confetti.ts">
+import confetti from "canvas-confetti"
+
+export function launchConfetti() {
+  confetti({
+    particleCount: 100,
+    spread: 70,
+    origin: { y: 0.6 },
+    colors: ["#FFD700", "#FF69B4", "#87CEFA", "#32CD32"]
+  })
+}
+</file>
+
+<file path="lib/userTypes.ts">
+export interface UserData {
+  level: number
+  xp: number
+  coins: number
+  gems: number
+  lives: number
+  maxLives: number
+  lastDailyChest: string | null
+  completedLevels: number[]
+  badges: string[]
+  currentPet: string
+  unlockedPets: string[]
+}
+
+export interface Pet {
+  id: string
+  name: string
+  icon: string
+  price: number
+  unlocked: boolean
+}
+
+export const pets: Pet[] = [
+  { id: "baby-capybara", name: "Capi Bebé", icon: "🐹", price: 0, unlocked: true },
+  { id: "adult-capybara", name: "Capi Adulto", icon: "🦫", price: 200, unlocked: false },
+  { id: "golden-capybara", name: "Capi Dorado", icon: "✨🦫", price: 1000, unlocked: false },
+  { id: "ninja-capybara", name: "Capi Ninja", icon: "🥷🦫", price: 1500, unlocked: false },
+]
+</file>
 
 <file path=".gitignore">
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
@@ -287,39 +353,6 @@ next-env.d.ts
 }
 </file>
 
-<file path="app/layout.tsx">
-// app/layout.tsx
-import type React from "react"
-import type { Metadata } from "next"
-import { GeistSans } from "geist/font/sans"
-import { GeistMono } from "geist/font/mono"
-import { Analytics } from "@vercel/analytics/next"
-import { Suspense } from "react"
-import "./globals.css"
-import { AuthProvider } from "@/components/AuthProvider" // <— añade esto
-
-export const metadata: Metadata = {
-  title: "Nu9ve Academy - Habilidades Blandas Gamificadas",
-  description: "Aprende habilidades blandas de forma divertida con capibaras",
-  generator: "v0.app",
-}
-
-export default function RootLayout({
-  children,
-}: Readonly<{ children: React.ReactNode }>) {
-  return (
-    <html lang="es">
-      <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable} antialiased`}>
-        <AuthProvider>
-          <Suspense fallback={null}>{children}</Suspense>
-        </AuthProvider>
-        <Analytics />
-      </body>
-    </html>
-  )
-}
-</file>
-
 <file path="components.json">
 {
   "$schema": "https://ui.shadcn.com/schema.json",
@@ -460,6 +493,108 @@ export default function CourseCard({ course, isActive = false, onSelect, classNa
       )}
     </Card>
   )
+}
+</file>
+
+<file path="components/Dashboard.tsx">
+"use client"
+import { useEffect, useState } from "react"
+import { useAuth } from "./AuthProvider"
+import { getProgress, saveProgress, updateStreak, getLeaderboard } from "@/lib/progress"
+
+export default function Dashboard() {
+    const { user } = useAuth()
+    const [progress, setProgress] = useState<any>(null)
+    const [streak, setStreak] = useState<number | null>(null)
+    const [leaders, setLeaders] = useState<any[]>([])
+
+    // 🔹 Cargar progreso, racha y ranking
+    useEffect(() => {
+        if (user) {
+            // Leer progreso guardado
+            getProgress(user.uid).then((data) => {
+                if (data) setProgress(data)
+                else setProgress({ level: 1, points: 0 })
+            })
+
+            // Actualizar racha
+            updateStreak(user.uid, user.displayName || "Jugador Anónimo").then((data) => {
+                setStreak(data?.streak || 1)
+            })
+        }
+
+        // Ranking visible para todos (incluso invitados)
+        getLeaderboard(10).then((data) => {
+            setLeaders(data)
+        })
+    }, [user])
+
+    // 🔹 Actualizar progreso (sumar puntos)
+    const handleUpdate = async () => {
+        if (user && progress) {
+            const newProgress = { ...progress, points: progress.points + 10 }
+            setProgress(newProgress)
+            await saveProgress(user.uid, newProgress)
+        }
+    }
+
+    return (
+        <div style={{ padding: "20px", fontFamily: "Arial" }}>
+            {/* Si hay usuario logueado */}
+            {user ? (
+                <div>
+                    <h1>Hola {user.displayName} 👋</h1>
+
+                    <div style={{
+                        marginTop: "15px",
+                        padding: "15px",
+                        border: "2px solid #eee",
+                        borderRadius: "12px",
+                        maxWidth: "320px"
+                    }}>
+                        <p>⭐ Nivel: {progress?.level}</p>
+                        <p>🎯 Puntos: {progress?.points}</p>
+                        <p style={{ fontSize: "20px", fontWeight: "bold", color: "orangered" }}>
+                            🔥 Racha: {streak} {streak === 1 ? "día" : "días"}
+                        </p>
+                    </div>
+
+                    <button
+                        onClick={handleUpdate}
+                        style={{
+                            marginTop: "20px",
+                            padding: "10px 15px",
+                            background: "orange",
+                            border: "none",
+                            borderRadius: "8px",
+                            color: "white",
+                            cursor: "pointer",
+                            fontSize: "16px"
+                        }}
+                    >
+                        ➕ Sumar 10 puntos
+                    </button>
+                </div>
+            ) : (
+                <h2>👋 Bienvenido invitado</h2>
+            )}
+
+            {/* Leaderboard visible siempre */}
+            <div style={{ marginTop: "30px" }}>
+                <h2>🏆 Ranking de Rachas</h2>
+                {leaders.length === 0 && <p>No hay jugadores aún.</p>}
+
+                <ol style={{ paddingLeft: "20px" }}>
+                    {leaders.map((player, index) => (
+                        <li key={player.id} style={{ marginBottom: "8px" }}>
+                            <span style={{ fontWeight: "bold" }}>#{index + 1}</span>{" "}
+                            {player.name || "Jugador Anónimo"} → 🔥 {player.streak} días
+                        </li>
+                    ))}
+                </ol>
+            </div>
+        </div>
+    )
 }
 </file>
 
@@ -823,52 +958,36 @@ export default function FirstEncountersLevel() {
 }
 </file>
 
-<file path="components/LoginButton.tsx">
+<file path="components/Leaderboard.tsx">
 "use client"
+import { useEffect, useState } from "react"
+import { getLeaderboard } from "@/lib/progress"
 
-import { signInWithPopup, signOut } from "firebase/auth"
-import { auth, googleProvider } from "@/lib/firebase"
-import { Button } from "@/components/ui/button"
-import { LogIn, LogOut } from "lucide-react"
-import { useState } from "react"
-import { useAuth } from "./AuthProvider"
+export default function Leaderboard() {
+    const [leaders, setLeaders] = useState<any[]>([])
 
-export default function LoginButton() {
-    const { user } = useAuth()
-    const [loading, setLoading] = useState(false)
-
-    const handleLogin = async () => {
-        try {
-            setLoading(true)
-            await signInWithPopup(auth, googleProvider)
-        } finally {
-            setLoading(false)
-        }
-    }
-
-    const handleLogout = async () => {
-        try {
-            setLoading(true)
-            await signOut(auth)
-        } finally {
-            setLoading(false)
-        }
-    }
-
-    if (user) {
-        return (
-            <Button onClick={handleLogout} disabled={loading} variant="outline" className="border-amber-300 text-amber-700">
-                <LogOut className="w-4 h-4 mr-2" />
-                Cerrar sesión
-            </Button>
-        )
-    }
+    useEffect(() => {
+        getLeaderboard(10).then((data) => {
+            setLeaders(data)
+        })
+    }, [])
 
     return (
-        <Button onClick={handleLogin} disabled={loading} variant="outline" className="border-amber-300 text-amber-700">
-            <LogIn className="w-4 h-4 mr-2" />
-            Iniciar Sesión con Google
-        </Button>
+        <div style={{ marginTop: "30px" }}>
+            <h2>🏆 Ranking de Rachas</h2>
+            {leaders.length === 0 && <p>No hay jugadores aún.</p>}
+
+            <ol style={{ paddingLeft: "20px" }}>
+                {leaders.map((user, index) => (
+                    <li key={user.id} style={{ marginBottom: "8px" }}>
+                        <span style={{ fontWeight: "bold" }}>
+                            #{index + 1}
+                        </span>{" "}
+                        {user.name || "Jugador Anónimo"} → 🔥 {user.streak} días
+                    </li>
+                ))}
+            </ol>
+        </div>
     )
 }
 </file>
@@ -1395,7 +1514,7 @@ export { Badge, badgeVariants }
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
-
+import useSound from "@/hooks/useSound"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
@@ -1440,11 +1559,17 @@ function Button({
     asChild?: boolean
   }) {
   const Comp = asChild ? Slot : "button"
-
+  const playClick = useSound("/sounds/click.mp3")
   return (
     <Comp
       data-slot="button"
       className={cn(buttonVariants({ variant, size, className }))}
+     onClick={(e: any) => {
+       playClick()
+        if (onClick) {
+          onClick(e) // mantiene la lógica original del botón
+          }
+      }}
       {...props}
     />
   )
@@ -1607,37 +1732,109 @@ const eslintConfig = [
 export default eslintConfig;
 </file>
 
-<file path="lib/firebase.ts">
-// lib/firebase.ts
-import { initializeApp, getApps, getApp } from "firebase/app"
-import {
-    getAuth,
-    GoogleAuthProvider,
-    setPersistence,
-    browserLocalPersistence,
-} from "firebase/auth"
+<file path="lib/progress.ts">
+import { doc, setDoc, getDoc, collection, getDocs, query, orderBy, limit } from "firebase/firestore"
+import { db } from "./firebase"
 
-const firebaseConfig = {
-    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
-    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN!,
-    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID!,
-    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET!,
-    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID!,
-    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID!,
+// 🔹 Guardar progreso del usuario
+export async function saveProgress(userId: string, progress: any) {
+    try {
+        await setDoc(doc(db, "progress", userId), progress, { merge: true })
+        console.log("✅ Progreso guardado")
+    } catch (error) {
+        console.error("❌ Error al guardar progreso:", error)
+    }
 }
 
-// Evita re-crear la app en HMR
-export const app = getApps().length ? getApp() : initializeApp(firebaseConfig)
+// 🔹 Leer progreso del usuario
+export async function getProgress(userId: string) {
+    try {
+        const ref = doc(db, "progress", userId)
+        const snap = await getDoc(ref)
 
-// Auth + proveedor Google
-export const auth = getAuth(app)
-export const googleProvider = new GoogleAuthProvider()
-googleProvider.setCustomParameters({ prompt: "select_account" })
+        if (snap.exists()) {
+            return snap.data()
+        } else {
+            return null // No tiene progreso aún
+        }
+    } catch (error) {
+        console.error("❌ Error al leer progreso:", error)
+    }
+}
 
-// Persistencia en el navegador
-setPersistence(auth, browserLocalPersistence).catch(() => {
-    // Silencia errores de persistencia (p.ej., privacidad del navegador)
-})
+// 🔹 Actualizar y verificar racha del usuario
+export async function updateStreak(userId: string, displayName?: string) {
+    const today = new Date()
+    const todayStr = today.toISOString().split("T")[0] // YYYY-MM-DD
+
+    const ref = doc(db, "progress", userId)
+    const snap = await getDoc(ref)
+
+    if (snap.exists()) {
+        const data = snap.data()
+        const lastLogin = data.lastLogin
+        const streak = data.streak || 0
+
+        if (lastLogin === todayStr) {
+            // Ya entró hoy → no cambiar
+            return { streak, lastLogin }
+        }
+
+        const yesterday = new Date()
+        yesterday.setDate(today.getDate() - 1)
+        const yesterdayStr = yesterday.toISOString().split("T")[0]
+
+        let newStreak = 1
+        if (lastLogin === yesterdayStr) {
+            newStreak = streak + 1 // siguió la racha
+        }
+
+        await setDoc(ref, {
+            ...data,
+            name: displayName || data.name || "Jugador Anónimo",
+            streak: newStreak,
+            lastLogin: todayStr,
+        }, { merge: true })
+
+        return { streak: newStreak, lastLogin: todayStr }
+    } else {
+        // Primera vez que entra
+        await setDoc(ref, {
+            name: displayName || "Jugador Anónimo",
+            streak: 1,
+            lastLogin: todayStr,
+            level: 1,
+            points: 0
+        })
+        return { streak: 1, lastLogin: todayStr }
+    }
+}
+
+// 🔹 Obtener ranking de rachas (Leaderboard)
+export async function getLeaderboard(top: number = 10) {
+    try {
+        const q = query(
+            collection(db, "progress"),
+            orderBy("streak", "desc"),
+            limit(top)
+        )
+
+        const querySnapshot = await getDocs(q)
+        const leaderboard: any[] = []
+
+        querySnapshot.forEach((doc) => {
+            leaderboard.push({
+                id: doc.id,
+                ...doc.data()
+            })
+        })
+
+        return leaderboard
+    } catch (error) {
+        console.error("❌ Error al cargar leaderboard:", error)
+        return []
+    }
+}
 </file>
 
 <file path="lib/utils.ts">
@@ -1665,46 +1862,6 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
-</file>
-
-<file path="package.json">
-{
-  "name": "nu9ve-v5",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
-  },
-  "dependencies": {
-    "@radix-ui/react-progress": "^1.1.7",
-    "@radix-ui/react-slot": "^1.2.3",
-    "@vercel/analytics": "^1.5.0",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "firebase": "^12.2.1",
-    "geist": "^1.4.2",
-    "lucide-react": "^0.542.0",
-    "next": "^15.2.4",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1",
-    "tailwind-merge": "^3.3.1"
-  },
-  "devDependencies": {
-    "@eslint/eslintrc": "^3",
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20.19.13",
-    "@types/react": "^19.1.12",
-    "@types/react-dom": "^19",
-    "eslint": "^9.35.0",
-    "eslint-config-next": "^15.2.4",
-    "tailwindcss": "^4.1.12",
-    "tw-animate-css": "^1.3.8",
-    "typescript": "^5.9.2"
-  }
-}
 </file>
 
 <file path="postcss.config.mjs">
@@ -1774,34 +1931,37 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 </file>
 
-<file path="tsconfig.json">
-{
-  "compilerOptions": {
-     "baseUrl": ".",
-    "target": "ES2017",
-    "lib": ["dom", "dom.iterable", "esnext"],
-    "allowJs": true,
-    "skipLibCheck": true,
-    "strict": true,
-    "noEmit": true,
-    "esModuleInterop": true,
-    "module": "esnext",
-    "moduleResolution": "bundler",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "jsx": "preserve",
-    "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
-    "paths": {
-      "@/*": ["./*"] 
-    }
-  },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+<file path="app/layout.tsx">
+// app/layout.tsx
+import type React from "react"
+import type { Metadata } from "next"
+import { GeistSans } from "geist/font/sans"
+import { GeistMono } from "geist/font/mono"
+import { Analytics } from "@vercel/analytics/next"
+import { Suspense } from "react"
+import "./globals.css"
+import { AuthProvider } from "@/components/AuthProvider" // <— añade esto
+
+export const metadata: Metadata = {
+  title: "Nu9ve Academy - Habilidades Blandas Gamificadas",
+  description: "Aprende habilidades blandas de forma divertida con capibaras",
+  generator: "v0.app",
+}
+
+export default function RootLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
+  return (
+    <html lang="es">
+      
+      <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable} antialiased`}>
+        <AuthProvider>
+          <Suspense fallback={null}>{children}</Suspense>
+        </AuthProvider>
+        <Analytics />
+      </body>
+    </html>
+  )
 }
 </file>
 
@@ -1860,212 +2020,21 @@ const getLevelType = (id: number) => {
 }
 </file>
 
-<file path="app/page.tsx">
+<file path="components/LevelComponent.tsx">
 "use client"
 
-import RoleplayLevel from "@/components/RoleplayLevel"
-import QuizLevel from "@/components/QuizLevel"
-import { useState, useEffect } from "react"
-import { Card, CardContent } from "@/components/ui/card"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import LoginButton from "@/components/LoginButton"
-import {
-  Trophy,
-  Heart,
-  Award,
-  Coins,
-  Gem,
-  ShoppingBag,
-  Map,
-  User,
-  Play,
-  Lock,
-  CheckCircle,
-  Sparkles,
-  Volume2,
-  Eye,
-  MessageCircle,
-  Users,
-  Presentation,
-  LogIn,
-  UserPlus,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react"
+import { Heart, Lightbulb } from "lucide-react"
+import { launchConfetti } from "@/lib/confetti"
+import { UserData, pets, Pet } from "@/lib/userTypes"
+import useSound from "@/hooks/useSound"
 
-interface UserData {
-  level: number
-  xp: number
-  coins: number
-  gems: number
-  lives: number
-  maxLives: number
-  lastDailyChest: string | null
-  completedLevels: number[]
-  badges: string[]
-  currentPet: string
-  unlockedPets: string[]
-}
+export default function LevelComponent({
 
-interface Course {
-  id: string
-  title: string
-  description: string
-  icon: string
-  color: string
-  totalLevels: number
-  unlockedLevels: number
-  completedLevels: number
-}
-
-interface Level {
-  id: number
-  title: string
-  type: "roleplay" | "quiz" | "story" | "video" | "interactive"
-  duration: number
-  xpReward: number
-  coinReward: number
-  isCompleted: boolean
-  isUnlocked: boolean
-}
-
-const initialUserData: UserData = {
-  level: 1,
-  xp: 0,
-  coins: 100,
-  gems: 5,
-  lives: 5,
-  maxLives: 5,
-  lastDailyChest: null,
-  completedLevels: [],
-  badges: [],
-  currentPet: "baby-capybara",
-  unlockedPets: ["baby-capybara"],
-}
-
-const courses: Course[] = [
-  {
-    id: "communication-v1",
-    title: "Comunicación Efectiva",
-    description: "Domina el arte de comunicarte con confianza y empatía",
-    icon: "💬",
-    color: "from-amber-400 to-orange-500",
-    totalLevels: 12,
-    unlockedLevels: 3,
-    completedLevels: 0,
-  },
-  {
-    id: "communication-v2",
-    title: "Comunicación Efectiva v2",
-    description: "Versión avanzada con nuevos escenarios y desafíos",
-    icon: "🗣️",
-    color: "from-orange-500 to-red-500",
-    totalLevels: 12,
-    unlockedLevels: 1,
-    completedLevels: 0,
-  },
-  {
-    id: "communication-v3",
-    title: "Comunicación Efectiva v3",
-    description: "Edición especial con casos de estudio empresariales",
-    icon: "📢",
-    color: "from-yellow-400 to-amber-500",
-    totalLevels: 12,
-    unlockedLevels: 1,
-    completedLevels: 0,
-  },
-  {
-    id: "communication-v4",
-    title: "Comunicación v4",
-    description: "Técnicas avanzadas de persuasión y liderazgo",
-    icon: "🎯",
-    color: "from-amber-500 to-yellow-600",
-    totalLevels: 12,
-    unlockedLevels: 1,
-    completedLevels: 0,
-  },
-  {
-    id: "communication-premium",
-    title: "Comunicación Premium",
-    description: "Masterclass exclusiva con casos reales de éxito",
-    icon: "👑",
-    color: "from-yellow-600 to-orange-700",
-    totalLevels: 12,
-    unlockedLevels: 1,
-    completedLevels: 0,
-  },
-]
-
-const communicationLevels: Level[] = [
-  {
-    id: 1,
-    title: "Primeros Encuentros",
-    type: "roleplay",
-    duration: 8,
-    xpReward: 50,
-    coinReward: 20,
-    isCompleted: false,
-    isUnlocked: true,
-  },
-  {
-    id: 2,
-    title: "Escucha Activa",
-    type: "quiz",
-    duration: 6,
-    xpReward: 40,
-    coinReward: 15,
-    isCompleted: false,
-    isUnlocked: true,
-  },
-  {
-    id: 3,
-    title: "quiz",
-    type: "video",
-    duration: 10,
-    xpReward: 60,
-    coinReward: 25,
-    isCompleted: false,
-    isUnlocked: true,
-  },
-  {
-    id: 4,
-    title: "Manejo de Conflictos",
-    type: "quiz",
-    duration: 12,
-    xpReward: 80,
-    coinReward: 30,
-    isCompleted: false,
-    isUnlocked: false,
-  },
-  {
-    id: 5,
-    title: "Presentaciones Efectivas",
-    type: "quiz",
-    duration: 15,
-    xpReward: 100,
-    coinReward: 40,
-    isCompleted: false,
-    isUnlocked: false,
-  },
-]
-
-const pets = [
-  { id: "baby-capybara", name: "Capi Bebé", icon: "🐹", price: 0, unlocked: true },
-  { id: "adult-capybara", name: "Capi Adulto", icon: "🦫", price: 200, unlocked: false },
-  { id: "golden-capybara", name: "Capi Dorado", icon: "✨🦫", price: 1000, unlocked: false },
-  { id: "ninja-capybara", name: "Capi Ninja", icon: "🥷🦫", price: 1500, unlocked: false },
-]
-
-const petData = {
-  "baby-capybara": { name: "Capi Bebé", icon: "🐹" },
-  "adult-capybara": { name: "Capi Adulto", icon: "🦫" },
-  "golden-capybara": { name: "Capi Dorado", icon: "✨🦫" },
-  "ninja-capybara": { name: "Capi Ninja", icon: "🥷🦫" },
-}
-
-function LevelComponent({
+  
   levelId,
   onComplete,
   onBack,
@@ -2078,14 +2047,25 @@ function LevelComponent({
   userData: UserData
   onLoseLife: () => void
 }) {
+  
   // --- ESTADO PRINCIPAL ---
   // Pasadas: 'first' (primera vuelta) y 'retry' (revisión de falladas)
   const [pass, setPass] = useState<"first" | "retry">("first")
   const [currentIndex, setCurrentIndex] = useState(0)        // índice de la pasada actual
   const [retryQueue, setRetryQueue] = useState<number[]>([]) // índices de preguntas falladas
   const [retryPos, setRetryPos] = useState(0)                // puntero dentro de retryQueue
-// estado nuevo
-const [isFixing, setIsFixing] = useState(false)
+  // estado nuevo
+  const [isFixing, setIsFixing] = useState(false)
+  const playClick = useSound("/sounds/click.mp3")
+  const playSuccess = useSound("/sounds/success.mp3")
+  const playSuccess2 = useSound("/sounds/success2.mp3")
+  const playFail = useSound("/sounds/fail.mp3")
+const pets = [
+  { id: "baby-capybara", name: "Capi Bebé", icon: "🐹", price: 0, unlocked: true },
+  { id: "adult-capybara", name: "Capi Adulto", icon: "🦫", price: 200, unlocked: false },
+  { id: "golden-capybara", name: "Capi Dorado", icon: "✨🦫", price: 1000, unlocked: false },
+  { id: "ninja-capybara", name: "Capi Ninja", icon: "🥷🦫", price: 1500, unlocked: false },
+]
 
   const [score, setScore] = useState(0)
   const [selectedOption, setSelectedOption] = useState<number | null>(null)
@@ -2475,7 +2455,7 @@ const [isFixing, setIsFixing] = useState(false)
     )
   }
 
-    // Normalizamos: todo lo que no sea 'roleplay' lo tratamos como 'quiz'
+  // Normalizamos: todo lo que no sea 'roleplay' lo tratamos como 'quiz'
   const levelKind: "roleplay" | "quiz" = currentLevelData.type === "roleplay" ? "roleplay" : "quiz"
 
   // Resolvemos qué índice de paso mostrar según la pasada
@@ -2495,29 +2475,34 @@ const [isFixing, setIsFixing] = useState(false)
   }
 
   const handleOptionSelect = (optionIndex: number) => {
+     
     setSelectedOption(optionIndex)
     const option = currentStepData.options[optionIndex]
 
     if (levelKind === "roleplay") {
       // Roleplay: reintento inmediato hasta acertar
-     if (option.correct) {
-  setScore((s) => s + option.points)
-  setIsCorrect(true)
-  setIsFixing(false)
-} else {
-  setIsCorrect(false)
-  onLoseLife()
-  setIsFixing(true)   // ← estamos corrigiendo esta misma
-}
-setShowFeedback(true)
+      if (option.correct) {
+        playSuccess2()
+        setScore((s) => s + option.points)
+        setIsCorrect(true)
+        setIsFixing(false)
+      } else {
+        playFail()
+        setIsCorrect(false)
+        onLoseLife()
+        setIsFixing(true)   // ← estamos corrigiendo esta misma
+      }
+      setShowFeedback(true)
       return
     }
 
     // Quiz: si fallas, se agenda para el final; igual mostramos feedback
     if (option.correct) {
+      playSuccess2()
       setScore((s) => s + option.points)
       setIsCorrect(true)
     } else {
+      playFail()
       pushWrongOnce(stepIndex)
       setIsCorrect(false)
       onLoseLife()
@@ -2536,6 +2521,8 @@ setShowFeedback(true)
         setRetryPos(0)
         resetForNext()
       } else {
+        playSuccess() // sonido de éxito al completar
+      launchConfetti() // 🎉 confetti
         onComplete(currentLevelData.xpReward, currentLevelData.coinReward)
       }
     }
@@ -2546,6 +2533,8 @@ setShowFeedback(true)
       setRetryPos((p) => p + 1)
       resetForNext()
     } else {
+      playSuccess() // sonido de éxito al completar
+  launchConfetti() // 🎉 confetti
       onComplete(currentLevelData.xpReward, currentLevelData.coinReward)
     }
   }
@@ -2620,12 +2609,11 @@ setShowFeedback(true)
             <div className="flex justify-between text-sm text-amber-700 mb-2">
               <span>Progreso</span>
               <span>
-  {pass === "retry"
-    ? "Repitiendo preguntas"
-    : `${stepIndex + 1} de ${currentLevelData.steps.length}${
-        retryQueue.length > 0 ? ` (${retryQueue.length} por repetir)` : ""
-      }`}
-</span>
+                {pass === "retry"
+                  ? "Repitiendo preguntas"
+                  : `${stepIndex + 1} de ${currentLevelData.steps.length}${retryQueue.length > 0 ? ` (${retryQueue.length} por repetir)` : ""
+                  }`}
+              </span>
             </div>
             <Progress value={((stepIndex + 1) / currentLevelData.steps.length) * 100} />
           </div>
@@ -2683,6 +2671,7 @@ setShowFeedback(true)
                   key={index}
                   variant="outline"
                   className="w-full text-left justify-start p-4 h-auto border-amber-200 hover:bg-amber-50 text-white bg-amber-700"
+                  disableClickSound
                   onClick={() => handleOptionSelect(index)}
                 >
                   {option.text}
@@ -2694,10 +2683,9 @@ setShowFeedback(true)
           {showFeedback && (
             <div className="mt-4">
               <div
-  className={`p-4 rounded-lg border-2 ${
-    isCorrect ? "bg-green-500/20 border-green-400/50" : "bg-red-500/20 border-red-400/50"
-  }`}
->
+                className={`p-4 rounded-lg border-2 ${isCorrect ? "bg-green-500/20 border-green-400/50" : "bg-red-500/20 border-red-400/50"
+                  }`}
+              >
                 <div className="flex items-center gap-2 mb-2">
                   <div className={`text-2xl ${isCorrect ? "animate-bounce" : ""}`}>{isCorrect ? "✅" : "❌"}</div>
                   <span className={`font-semibold ${isCorrect ? "text-green-800" : "text-red-800"}`}>
@@ -2715,21 +2703,21 @@ setShowFeedback(true)
                   Puntos ganados: +{currentStepData.options[selectedOption!].points}
                 </div>
                 <Button
-  onClick={handleNext}
-  className={`mt-2 px-6 py-2 text-white font-semibold rounded-lg ${
-    isCorrect
-      ? "bg-green-500 hover:bg-green-600"
-      : "bg-red-500 hover:bg-red-600"
-  }`}
->
-  {isCorrect
-    ? (pass === "first"
-        ? (stepIndex < currentLevelData.steps.length - 1
-            ? "Siguiente"
-            : (retryQueue.length > 0 ? "Repasar falladas" : "Completar nivel"))
-        : (retryPos < retryQueue.length - 1 ? "Siguiente (repaso)" : "Completar nivel"))
-    : "Reintentar"}
-</Button>
+                
+                  onClick={handleNext}
+                  className={`mt-2 px-6 py-2 text-white font-semibold rounded-lg ${isCorrect
+                    ? "bg-green-500 hover:bg-green-600"
+                    : "bg-red-500 hover:bg-red-600"
+                    }`}
+                >
+                  {isCorrect
+                    ? (pass === "first"
+                      ? (stepIndex < currentLevelData.steps.length - 1
+                        ? "Siguiente"
+                        : (retryQueue.length > 0 ? "Repasar falladas" : "Completar nivel"))
+                      : (retryPos < retryQueue.length - 1 ? "Siguiente (repaso)" : "Completar nivel"))
+                    : "Reintentar"}
+                </Button>
 
 
               </div>
@@ -2740,734 +2728,175 @@ setShowFeedback(true)
     </div>
   )
 }
+</file>
 
-const DeckCarousel = ({
-  courses,
-  onCourseSelect,
-}: { courses: Course[]; onCourseSelect: (courseId: string) => void }) => {
-  const [currentIndex, setCurrentIndex] = useState(0)
+<file path="components/LoginButton.tsx">
+"use client"
 
-  const handleNext = () => {
-    setCurrentIndex((prevIndex) => (prevIndex + 1) % courses.length)
-  }
+import { signInWithPopup, signOut } from "firebase/auth"
+import { auth, googleProvider } from "@/lib/firebase"
+import { Button } from "@/components/ui/button"
+import { LogIn, LogOut } from "lucide-react"
+import { useState } from "react"
+import { useAuth } from "./AuthProvider"
 
-  const handlePrev = () => {
-    setCurrentIndex((prevIndex) => (prevIndex - 1 + courses.length) % courses.length)
-  }
+export default function LoginButton() {
+  
+    const { user } = useAuth()
+    const [loading, setLoading] = useState(false)
 
-  const getCardPosition = (index: number) => {
-    const position = (index - currentIndex + courses.length) % courses.length
-    if (position === 0) return "center"
-    if (position === 1 || position === courses.length - 1) return "side"
-    return "hidden"
-  }
-
-  return (
-    <div className="relative h-[550px] flex items-center justify-center px-8">
-      <div className="relative w-full max-w-5xl flex items-center justify-center">
-        {courses.map((course, index) => {
-          const position = getCardPosition(index)
-          const isActive = position === "center"
-          const isLeft = index < currentIndex || (currentIndex === 0 && index === courses.length - 1)
-
-          if (position === "hidden") return null
-
-          return (
-            <div
-              key={course.id}
-              className={`absolute transition-all duration-700 ease-out transform ${position === "center"
-                  ? "z-20 scale-110 opacity-100 translate-x-0"
-                  : position === "side"
-                    ? isLeft
-                      ? "z-10 scale-85 opacity-50 -translate-x-80"
-                      : "z-10 scale-85 opacity-50 translate-x-80"
-                    : "opacity-0"
-                }`}
-              style={{
-                pointerEvents: isActive ? "auto" : "none",
-              }}
-            >
-              <div
-                className={`w-80 h-[450px] rounded-3xl p-8 shadow-2xl border-2 transition-all duration-700 bg-gradient-to-br ${course.color} ${isActive
-                    ? "cursor-pointer hover:scale-105 hover:shadow-3xl border-white/40 hover:border-white/60"
-                    : "cursor-default border-white/20"
-                  }`}
-                onClick={isActive ? () => onCourseSelect(course.id) : undefined}
-                tabIndex={isActive ? 0 : -1}
-                role="button"
-                data-active={isActive}
-                onKeyDown={(e) => {
-                  if (isActive && (e.key === "Enter" || e.key === " ")) {
-                    e.preventDefault()
-                    onCourseSelect(course.id)
-                  }
-                }}
-              >
-                <div className="h-full flex flex-col justify-between text-white">
-                  <div>
-                    <div className="text-6xl mb-6 text-center drop-shadow-lg">{course.icon}</div>
-                    <h3 className="text-2xl font-bold mb-4 text-center drop-shadow-md">{course.title}</h3>
-                    <p className="text-white/90 mb-6 text-center leading-relaxed drop-shadow-sm">
-                      {course.description}
-                    </p>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between text-sm text-white/90">
-                      <span className="font-medium">Progreso</span>
-                      <span className="font-bold">
-                        {course.completedLevels} / {course.totalLevels}
-                      </span>
-                    </div>
-                    <div className="w-full bg-white/20 rounded-full h-3 backdrop-blur-sm">
-                      <div
-                        className="bg-white h-3 rounded-full transition-all duration-500 shadow-sm"
-                        style={{ width: `${(course.completedLevels / course.totalLevels) * 100}%` }}
-                      />
-                    </div>
-
-                    {isActive && (
-                      <Button className="w-full bg-white/20 hover:bg-white/30 text-white border-2 border-white/40 hover:border-white/60 backdrop-blur-sm font-bold py-3 rounded-xl transition-all duration-300">
-                        {course.completedLevels > 0 ? "Continuar Aventura" : "Comenzar Aventura"}
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )
-        })}
-      </div>
-
-      <Button
-        variant="outline"
-        size="lg"
-        onClick={handlePrev}
-        className="absolute left-4 z-30 w-16 h-16 rounded-full border-2 border-white/40 text-white hover:bg-white/20 bg-black/20 backdrop-blur-md hover:border-white/60 transition-all duration-300"
-        aria-label="Curso anterior"
-      >
-        <ChevronLeft className="w-8 h-8" />
-      </Button>
-
-      <Button
-        variant="outline"
-        size="lg"
-        onClick={handleNext}
-        className="absolute right-4 z-30 w-16 h-16 rounded-full border-2 border-white/40 text-white hover:bg-white/20 bg-black/20 backdrop-blur-md hover:border-white/60 transition-all duration-300"
-        aria-label="Siguiente curso"
-      >
-        <ChevronRight className="w-8 h-8" />
-      </Button>
-
-      <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex gap-3">
-        {courses.map((_, index) => (
-          <button
-            key={index}
-            onClick={() => setCurrentIndex(index)}
-            className={`w-3 h-3 rounded-full transition-all duration-300 ${index === currentIndex ? "bg-white shadow-lg scale-125" : "bg-white/40 hover:bg-white/60"
-              }`}
-            aria-label={`Ir al curso ${index + 1}`}
-          />
-        ))}
-      </div>
-    </div>
-  )
-}
-
-export default function Nu9veAcademy() {
-  const [userData, setUserData] = useState<UserData>(initialUserData)
-  const [currentView, setCurrentView] = useState<"welcome" | "dashboard" | "course" | "level" | "shop" | "profile">(
-    "welcome",
-  )
-  const [showDailyChest, setShowDailyChest] = useState(true)
-  const [chestAnimation, setChestAnimation] = useState(false)
-  const [lifeTimer, setLifeTimer] = useState(0)
-  const [currentLevel, setCurrentLevel] = useState<number | null>(null)
-
-  // const [selectedCourse, setSelectedCourse] = useState<string>("communication-v1")
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setUserData((prev) => {
-        if (prev.lives < prev.maxLives) {
-          const newTimer = lifeTimer + 1
-          if (newTimer >= 15) {
-            setLifeTimer(0)
-            return { ...prev, lives: prev.lives + 1 }
-          } else {
-            setLifeTimer(newTimer)
-            return prev
-          }
+    const handleLogin = async () => {
+        try {
+            setLoading(true)
+            await signInWithPopup(auth, googleProvider)
+        } finally {
+            setLoading(false)
         }
-        return prev
-      })
-    }, 1000)
-
-    return () => clearInterval(interval)
-  }, [lifeTimer])
-
-  // Check for daily chest availability
-  useEffect(() => {
-    const today = new Date().toDateString()
-    if (userData.lastDailyChest !== today) {
-      setShowDailyChest(true)
-    }
-  }, [userData.lastDailyChest])
-
-  const openDailyChest = () => {
-    setChestAnimation(true)
-    const rewards = {
-      coins: Math.floor(Math.random() * 50) + 25,
-      gems: Math.floor(Math.random() * 3) + 1,
-      xp: Math.floor(Math.random() * 30) + 20,
     }
 
-    setTimeout(() => {
-      setUserData((prev) => ({
-        ...prev,
-        coins: prev.coins + rewards.coins,
-        gems: prev.gems + rewards.gems,
-        xp: prev.xp + rewards.xp,
-        lastDailyChest: new Date().toDateString(),
-      }))
-      setShowDailyChest(false)
-      setChestAnimation(false)
-    }, 2000)
-  }
-
-  const buyLife = () => {
-    if (userData.lives < userData.maxLives && userData.coins >= 15) {
-      setUserData((prev) => ({
-        ...prev,
-        lives: prev.lives + 1,
-        coins: prev.coins - 15,
-      }))
-    }
-  }
-
-  const startLevel = (levelId: number) => {
-    setCurrentLevel(levelId)
-    setCurrentView("level")
-  }
-
-  // const buyPet = (petId: string, price: number) => {
-  //   if (userData.coins >= price) {
-  //     setUserData((prev) => ({
-  //       ...prev,
-  //       coins: prev.coins - price,
-  //       unlockedPets: [...prev.unlockedPets, petId],
-  //     }))
-  //   }
-  // }
-
-  // const selectPet = (petId: string) => {
-  //   setUserData((prev) => ({
-  //     ...prev,
-  //     currentPet: petId,
-  //   }))
-  // }
-
-  const loseLife = () => {
-    setUserData((prev) => ({
-      ...prev,
-      lives: Math.max(0, prev.lives - 1),
-    }))
-  }
-
-  const completeLevel = (levelId: number, xp: number, coins: number) => {
-    setUserData((prev) => {
-      const newCompletedLevels = [...prev.completedLevels]
-      if (!newCompletedLevels.includes(levelId)) {
-        newCompletedLevels.push(levelId)
-      }
-
-      return {
-        ...prev,
-        xp: prev.xp + xp,
-        coins: prev.coins + coins,
-        completedLevels: newCompletedLevels,
-      }
-    })
-
-    const nextLevelIndex = communicationLevels.findIndex((level) => level.id === levelId + 1)
-    if (nextLevelIndex !== -1) {
-      communicationLevels[nextLevelIndex].isUnlocked = true
+    const handleLogout = async () => {
+        try {
+            setLoading(true)
+            await signOut(auth)
+        } finally {
+            setLoading(false)
+        }
     }
 
-    setCurrentView("course")
-  }
-
-  const renderWelcome = () => (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 relative overflow-hidden">
-      {/* Background jungle scene */}
-      <div className="absolute inset-0 bg-[url('/jungle-campfire-night-scene-animated.png')] opacity-30 bg-cover bg-center"></div>
-
-      <Card className="max-w-md w-full mx-4 relative z-10 border-2 border-amber-300 shadow-2xl bg-white/95 backdrop-blur-sm">
-        <CardContent className="p-8 text-center">
-          {/* Animated capybara */}
-          <div className="text-8xl mb-6 animate-bounce">🦫</div>
-
-          {/* Welcome message */}
-          <h1 className="text-3xl font-bold text-amber-800 mb-4">¡Hola, Explorador! 🌅</h1>
-          <div className="text-amber-700 mb-6 space-y-2">
-            <p className="text-lg">
-              Bienvenido a tu viaje en la <strong>Comunicación Efectiva</strong>.
-            </p>
-            <p>Aquí aprenderás a expresarte con confianza, empatía y claridad.</p>
-            <p className="text-sm text-amber-600">
-              ¡Tu mascota estará contigo en cada paso, lista para ayudarte cuando lo necesites!
-            </p>
-          </div>
-
-          {/* Progress indicator */}
-          <div className="mb-6 p-4 bg-amber-50 rounded-lg border border-amber-200">
-            <div className="flex justify-between text-sm text-amber-700 mb-2">
-              <span>Progreso del Curso</span>
-              <span>0 de 8 niveles completados</span>
-            </div>
-            <Progress value={0} className="bg-amber-200" />
-          </div>
-
-          {/* Action buttons */}
-          <div className="space-y-3">
-            <Button
-              onClick={() => setCurrentView("dashboard")}
-              className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-3 text-lg shadow-lg"
-            >
-              <Play className="w-5 h-5 mr-2" />
-              Comenzar Aventura
-            </Button>
-
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                className="flex-1 border-amber-300 text-amber-700 hover:bg-amber-50 bg-transparent"
-                onClick={() => {
-                  // Future: implement login
-                  setCurrentView("dashboard")
-                }}
-              >
-                <LogIn className="w-4 h-4 mr-2" />
-                Iniciar Sesión
-              </Button>
-              <div className="flex gap-2">
-                <LoginButton />
-                <Button
-                  variant="outline"
-                  className="flex-1 border-amber-300 text-amber-700 hover:bg-amber-50 bg-transparent"
-                  onClick={() => setCurrentView("dashboard")}
-                >
-                  Continuar como Invitado
-                </Button>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  )
-
-  const renderDashboard = () => (
-    <div
-  className="relative min-h-screen bg-cover bg-center bg-no-repeat"
-  style={{
-    backgroundImage: `url('/jungle-adventure-background.jpg')`, // o tu foto
-  }}
->
-   <div className="relative z-10 p-6 space-y-6"></div>
-      <div className="absolute inset-0 bg-gradient-to-br from-amber-900/20 via-orange-900/10 to-yellow-900/20"></div>
-
-      <div className="relative z-10 p-6">
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6 bg-white/95 backdrop-blur-md rounded-2xl p-6 shadow-lg border border-white/20">
-            <div className="flex items-center gap-4">
-              <div className="text-5xl animate-bounce">
-                {petData[userData.currentPet as keyof typeof petData]?.icon || "🐹"}
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-amber-800 mb-1">¡Hola, Explorador!</h1>
-                <p className="text-amber-600">Continúa tu aventura de aprendizaje</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2">
-                <Coins className="w-5 h-5 text-amber-500" />
-                <span className="font-semibold text-amber-800">{userData.coins}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Gem className="w-5 h-5 text-cyan-500" />
-                <span className="font-semibold text-cyan-800">{userData.gems}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Heart className="w-5 h-5 text-red-500" />
-                <span className="font-semibold text-red-800">
-                  {userData.lives}/{userData.maxLives}
-                </span>
-                {userData.lives < userData.maxLives && (
-                  <div className="text-xs text-red-600 ml-1">+1 en {15 - lifeTimer}s</div>
-                )}
-              </div>
-              {userData.lives < userData.maxLives && userData.coins >= 15 && (
-                <Button onClick={buyLife} size="sm" className="bg-red-500 hover:bg-red-600 text-white rounded-xl">
-                  +1 ❤️ (15🪙)
-                </Button>
-              )}
-            </div>
-          </div>
-
-          <div className="mb-8 bg-white/90 backdrop-blur-md rounded-2xl p-4 shadow-lg border border-white/20">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-amber-800">Progreso General</h2>
-              <div className="text-sm text-amber-600">{userData.completedLevels.length} niveles completados</div>
-            </div>
-            <div className="mt-2">
-              <Progress
-                value={
-                  (userData.completedLevels.length / courses.reduce((acc, course) => acc + course.totalLevels, 0)) * 100
-                }
-                className="h-2"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Cofre diario */}
-        {showDailyChest && (
-          <Card className="border-2 border-amber-400 bg-gradient-to-r from-amber-50 to-orange-50 relative overflow-hidden">
-            <div className="absolute inset-0 bg-[url('/treasure-chest-jungle-background.png')] opacity-10"></div>
-            <CardContent className="p-6 text-center relative z-10">
-              <div className={`text-6xl mb-4 ${chestAnimation ? "animate-bounce" : "animate-pulse"}`}>🎁</div>
-              <h3 className="text-xl font-bold mb-2 text-amber-800">¡Cofre Diario Disponible!</h3>
-              <p className="text-amber-600 mb-4">Tu capibara ha encontrado un tesoro especial</p>
-              <Button
-                onClick={openDailyChest}
-                className="bg-amber-500 hover:bg-amber-600 text-white shadow-lg"
-                disabled={chestAnimation}
-              >
-                {chestAnimation ? "Abriendo..." : "Abrir Cofre"}
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
-        <div>
-          <h2 className="text-3xl font-bold mb-8 text-white text-center drop-shadow-lg">Selecciona tu Curso</h2>
-          <DeckCarousel
-            courses={courses.map((course) => ({
-              ...course,
-              completedLevels: userData.completedLevels.filter((level) => {
-                if (course.id === "communication-v1") return level >= 1 && level <= 12
-                if (course.id === "communication-v2") return level >= 13 && level <= 24
-                if (course.id === "communication-v3") return level >= 25 && level <= 36
-                if (course.id === "communication-v4") return level >= 37 && level <= 48
-                if (course.id === "communication-premium") return level >= 49 && level <= 60
-                return false
-              }).length,
-            }))}
-            onCourseSelect={(courseId) => {
-              // setSelectedCourse(courseId)
-              setCurrentView("course")
-            }}
-          />
-        </div>
-      </div>
-    </div>
-  )
-
-  const renderShop = () => (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 p-6">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center gap-4 mb-6">
-          <Button
-            variant="outline"
-            onClick={() => setCurrentView("dashboard")}
-            className="border-amber-300 text-amber-700"
-          >
-            ← Volver
-          </Button>
-          <h1 className="text-3xl font-bold text-amber-800">🛍️ Tienda de Mascotas</h1>
-        </div>
-
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {pets.map((pet) => (
-            <Card key={pet.id} className="border-2 border-amber-200 hover:border-amber-400 transition-colors">
-              <CardContent className="p-6 text-center">
-                <div className="text-6xl mb-4">{pet.icon}</div>
-                <h3 className="text-lg font-bold mb-2 text-amber-800">{pet.name}</h3>
-                <div className="flex items-center justify-center gap-2 mb-4">
-                  <Coins className="w-4 h-4 text-yellow-500" />
-                  <span className="font-bold text-amber-700">{pet.price === 0 ? "Gratis" : pet.price}</span>
-                </div>
-                {userData.unlockedPets.includes(pet.id) ? (
-                  <div className="space-y-2">
-                    {userData.currentPet === pet.id ? (
-                      <Button disabled className="w-full bg-green-100 text-green-800">
-                        ✓ Equipada
-                      </Button>
-                    ) : (
-                      <Button
-                        onClick={() => setUserData((prev) => ({ ...prev, currentPet: pet.id }))}
-                        className="w-full bg-amber-500 hover:bg-amber-600 text-white"
-                      >
-                        Equipar
-                      </Button>
-                    )}
-                  </div>
-                ) : (
-                  <Button
-                    onClick={() => {
-                      if (userData.coins >= pet.price) {
-                        setUserData((prev) => ({
-                          ...prev,
-                          coins: prev.coins - pet.price,
-                          unlockedPets: [...prev.unlockedPets, pet.id],
-                          currentPet: pet.id,
-                        }))
-                      }
-                    }}
-                    disabled={userData.coins < pet.price}
-                    className="w-full bg-amber-500 hover:bg-amber-600 text-white disabled:bg-gray-300"
-                  >
-                    {userData.coins >= pet.price ? "Comprar" : "Sin monedas"}
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-
-  const renderProfile = () => (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4 mb-6">
-        <Button variant="outline" onClick={() => setCurrentView("dashboard")}>
-          ← Volver
-        </Button>
-        <h1 className="text-2xl font-bold">Mi Perfil</h1>
-      </div>
-
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center gap-6 mb-6">
-            <div className="text-8xl">{pets.find((p) => p.id === userData.currentPet)?.icon}</div>
-            <div>
-              <h2 className="text-2xl font-bold">Explorador Nu9ve</h2>
-              <p className="text-muted-foreground">Nivel {userData.level}</p>
-              <Progress value={userData.xp % 100} className="w-48 mt-2" />
-              <p className="text-sm text-muted-foreground mt-1">{userData.xp % 100}/100 XP para el siguiente nivel</p>
-            </div>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-4">
-            <div className="text-center p-4 bg-muted rounded-lg">
-              <Trophy className="w-8 h-8 text-yellow-500 mx-auto mb-2" />
-              <p className="font-bold text-lg">{userData.completedLevels.length}</p>
-              <p className="text-sm text-muted-foreground">Niveles Completados</p>
-            </div>
-            <div className="text-center p-4 bg-muted rounded-lg">
-              <Award className="w-8 h-8 text-purple-500 mx-auto mb-2" />
-              <p className="font-bold text-lg">{userData.badges.length}</p>
-              <p className="text-sm text-muted-foreground">Insignias Obtenidas</p>
-            </div>
-            <div className="text-center p-4 bg-muted rounded-lg">
-              <Sparkles className="w-8 h-8 text-pink-500 mx-auto mb-2" />
-              <p className="font-bold text-lg">{userData.unlockedPets.length}</p>
-              <p className="text-sm text-muted-foreground">Mascotas Desbloqueadas</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  )
-
-  const renderCourse = () => {
-    const getLevelIcon = (type: string) => {
-      switch (type) {
-        case "roleplay":
-          return <MessageCircle className="w-6 h-6 text-blue-500" />
-        case "interactive":
-          return <Volume2 className="w-6 h-6 text-green-500" />
-        case "video":
-          return <Eye className="w-6 h-6 text-purple-500" />
-        case "story":
-          return <Users className="w-6 h-6 text-orange-500" />
-        case "quiz":
-          return <Presentation className="w-6 h-6 text-red-500" />
-        default:
-          return <Play className="w-6 h-6" />
-      }
+    if (user) {
+        return (
+  <Button
+    onClick= {handleLogin}
+    disabled={loading}
+    variant="outline"
+    className="flex-1 border-amber-300 text-amber-700 text-lg px-8 py-4 rounded-xl shadow-md flex items-center justify-center gap-3"
+  >
+    <LogIn className="w-6 h-6" />
+    Iniciar Sesión con Google
+  </Button>
+)
     }
 
     return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-4 mb-6">
-          <Button
-            variant="outline"
-            onClick={() => setCurrentView("dashboard")}
-            className="border-amber-300 text-amber-700 hover:bg-amber-50"
-          >
-            ← Volver
-          </Button>
-          <h1 className="text-2xl font-bold text-amber-800">Comunicación Efectiva</h1>
-          <div className="text-3xl animate-bounce">🦫</div>
-        </div>
+  <Button
+    onClick={handleLogin}
+    disabled={loading}
+    variant="outline"
+    className="flex-1 border-amber-300 text-amber-700 text-lg px-8 py-4 rounded-xl shadow-md flex items-center justify-center gap-3"
+  >
+    <LogIn className="w-6 h-6" />
+    Iniciar Sesión con Google
+  </Button>
+)
+}
+</file>
 
-        <div className="relative">
-          <div className="grid gap-6">
-            {communicationLevels.map((level, index) => {
-              const isUnlocked = index === 0 || userData.completedLevels.includes(index)
-              const isCompleted = userData.completedLevels.includes(level.id)
-              const displayType = level.type === "roleplay" ? "roleplay" : "quiz"
+<file path="lib/firebase.ts">
+// lib/firebase.ts
+import { initializeApp, getApps, getApp } from "firebase/app"
+import {
+    getAuth,
+    GoogleAuthProvider,
+    setPersistence,
+    browserLocalPersistence,
+} from "firebase/auth"
+import { getFirestore } from "firebase/firestore"
 
-              return (
-                <Card
-                  key={level.id}
-                  className={`relative overflow-hidden transition-all duration-300 ${isUnlocked ? "cursor-pointer hover:shadow-xl hover:scale-[1.02]" : "opacity-50"
-                    } ${isCompleted ? "border-green-500 bg-green-50 shadow-green-200 shadow-lg" : "border-amber-200"}`}
-                >
-                  <div
-                    className="absolute inset-0 opacity-20"
-                    style={{
-                      backgroundImage: `url('/--getlevelbackground-level-id--.png')`,
-                      backgroundSize: "cover",
-                      backgroundPosition: "center",
-                    }}
-                  ></div>
+const firebaseConfig = {
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN!,
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID!,
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET!,
+    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID!,
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID!,
+}
 
-                  <CardContent className="p-6 relative z-10">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="relative">
-                          {isCompleted ? (
-                            <div className="relative">
-                              <CheckCircle className="w-12 h-12 text-green-500" />
-                              <div className="absolute -top-1 -right-1 text-xl">✨</div>
-                            </div>
-                          ) : isUnlocked ? (
-                            <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-600 rounded-full flex items-center justify-center text-white font-bold shadow-lg">
-                              {level.id}
-                            </div>
-                          ) : (
-                            <Lock className="w-12 h-12 text-gray-400" />
-                          )}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            {getLevelIcon(level.type)}
-                            <h3 className="text-lg font-bold text-amber-800">{level.title}</h3>
-                          </div>
-                          <div className="flex items-center gap-4 text-sm text-amber-600">
-                            <span>⏱️ {level.duration} min</span>
-                            <span>⭐ {level.xpReward} XP</span>
-                            <span>🪙 {level.coinReward} monedas</span>
-                          <Badge variant="secondary" className="lowercase">
-    {displayType}
-    </Badge>
-                          </div>
-                          <p className="text-sm text-amber-600 mt-2">
-                            {level.id === 1 && "Aprende a hacer una primera impresión positiva"}
-                            {level.id === 2 && "Técnicas para escuchar activamente"}
-                            {level.id === 3 && "Domina el lenguaje corporal efectivo"}
-                            {level.id === 4 && "Resuelve conflictos con confianza"}
-                            {level.id === 5 && "Presenta ideas de manera impactante"}
-                          </p>
-                        </div>
-                      </div>
-                      {isUnlocked && (
-                        <Button
-                          onClick={() => startLevel(level.id)}
-                          disabled={!isUnlocked}
-                          className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white shadow-lg"
-                        >
-                          {isCompleted ? "Repetir" : "Jugar"}
-                        </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              )
-            })}
-          </div>
-        </div>
-      </div>
-    )
+// Evita re-crear la app en HMR
+export const app = getApps().length ? getApp() : initializeApp(firebaseConfig)
+
+// Auth + proveedor Google
+export const auth = getAuth(app)
+export const googleProvider = new GoogleAuthProvider()
+export const db = getFirestore(app)
+googleProvider.setCustomParameters({ prompt: "select_account" })
+
+// Persistencia en el navegador
+setPersistence(auth, browserLocalPersistence).catch(() => {
+    // Silencia errores de persistencia (p.ej., privacidad del navegador)
+})
+</file>
+
+<file path="package.json">
+{
+  "name": "nu9ve-v5",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@radix-ui/react-progress": "^1.1.7",
+    "@radix-ui/react-slot": "^1.2.3",
+    "@vercel/analytics": "^1.5.0",
+    "canvas-confetti": "^1.9.3",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "firebase": "^12.2.1",
+    "geist": "^1.4.2",
+    "lucide-react": "^0.542.0",
+    "next": "^15.2.4",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "tailwind-merge": "^3.3.1"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/canvas-confetti": "^1.9.0",
+    "@types/node": "^20.19.13",
+    "@types/react": "^19.1.12",
+    "@types/react-dom": "^19",
+    "@types/react-icons": "^2.2.7",
+    "eslint": "^9.35.0",
+    "eslint-config-next": "^15.2.4",
+    "tailwindcss": "^4.1.12",
+    "tw-animate-css": "^1.3.8",
+    "typescript": "^5.9.2"
   }
+}
+</file>
 
-  return (
-    <>
-      {currentView === "welcome" && renderWelcome()}
-      {currentView !== "welcome" && (
-        <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
-          <nav className="bg-white border-b border-amber-200 sticky top-0 z-50 shadow-sm">
-            <div className="max-w-6xl mx-auto px-4 py-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="text-2xl animate-pulse">🦫</div>
-                  <h1 className="text-xl font-bold text-amber-800">Nu9ve Academy</h1>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant={currentView === "dashboard" ? "default" : "ghost"}
-                    onClick={() => setCurrentView("dashboard")}
-                    size="sm"
-                    className={
-                      currentView === "dashboard"
-                        ? "bg-amber-500 hover:bg-amber-600"
-                        : "text-amber-700 hover:bg-amber-50"
-                    }
-                  >
-                    <Map className="w-4 h-4 mr-2" />
-                    Dashboard
-                  </Button>
-                  <Button
-                    variant={currentView === "shop" ? "default" : "ghost"}
-                    onClick={() => setCurrentView("shop")}
-                    size="sm"
-                    className={
-                      currentView === "shop" ? "bg-amber-500 hover:bg-amber-600" : "text-amber-700 hover:bg-amber-50"
-                    }
-                  >
-                    <ShoppingBag className="w-4 h-4 mr-2" />
-                    Tienda
-                  </Button>
-                  <Button
-                    variant={currentView === "profile" ? "default" : "ghost"}
-                    onClick={() => setCurrentView("profile")}
-                    size="sm"
-                    className={
-                      currentView === "profile" ? "bg-amber-500 hover:bg-amber-600" : "text-amber-700 hover:bg-amber-50"
-                    }
-                  >
-                    <User className="w-4 h-4 mr-2" />
-                    Perfil
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </nav>
-
-          <main className="max-w-6xl mx-auto p-4 py-8">
-            {currentView === "dashboard" && renderDashboard()}
-            {currentView === "course" && renderCourse()}
-            {currentView === "shop" && renderShop()}
-            {currentView === "profile" && renderProfile()}
-            {currentView === "level" && currentLevel && (
-              <LevelComponent
-                levelId={currentLevel}
-                onComplete={(xp, coins) => completeLevel(currentLevel, xp, coins)}
-                onBack={() => setCurrentView("course")}
-                userData={userData}
-                onLoseLife={loseLife}
-              />
-            )}
-          </main>
-        </div>
-      )}
-    </>
-  )
+<file path="tsconfig.json">
+{
+  "compilerOptions": {
+     "baseUrl": ".",
+    "target": "ES2017",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./*"] 
+    }
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
 }
 </file>
 
@@ -3836,270 +3265,6 @@ const handleNext = () => {
 }
 </file>
 
-<file path="components/LevelComponent.tsx">
-"use client"
-
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
-import { Heart, Lightbulb } from "lucide-react"
-
-interface LevelComponentProps {
-  levelId: number
-  userData: any
-  onComplete: (xp: number, coins: number) => void
-  onBack: () => void
-  onLoseLife: () => void
-}
-// Tipos/constantes de mascotas (NO toques tu lógica)
-export const PETS = {
-  "baby-capybara":  { icon: "🍼🦫", name: "Bebé capibara" },
-  "adult-capybara": { icon: "🦫",   name: "Capibara adulta" },
-  "golden-capybara":{ icon: "✨🦫", name: "Capibara dorada" },
-} as const
-
-export type PetKey = keyof typeof PETS
-
-const toPetKey = (k: unknown): PetKey =>
-  typeof k === "string" && k in PETS ? (k as PetKey) : "baby-capybara"
-
-export default function LevelComponent({ levelId, userData, onComplete, onBack, onLoseLife }: LevelComponentProps) {
-  const [currentStep, setCurrentStep] = useState(0)
-  const [selectedOption, setSelectedOption] = useState<number | null>(null)
-  const [showFeedback, setShowFeedback] = useState(false)
-  const [score, setScore] = useState(0)
-  const [hintUsed, setHintUsed] = useState(false)
-  const [isCorrect, setIsCorrect] = useState<boolean | null>(null)
-  const [correctOnFirstTry, setCorrectOnFirstTry] = useState(0)
-  const [attemptedQuestions, setAttemptedQuestions] = useState<Set<number>>(new Set())
-
-
-
- const equippedPetKey: PetKey = toPetKey(userData?.equippedPet)
-  const equippedPetMeta = PETS[equippedPetKey]
-  const currentPet = userData.unlockedPets.find((petId: string) => petId === userData.currentPet)
-  const petData = {
-    "baby-capybara": { icon: "🐹", name: "Capi Bebé" },
-    "adult-capybara": { icon: "🦫", name: "Capi Adulto" },
-    "golden-capybara": { icon: "✨🦫", name: "Capi Dorado" },
-    "ninja-capybara": { icon: "🥷🦫", name: "Capi Ninja" },
-  }[equippedPetKey] || { icon: "🐹", name: "Capi Bebé" }
-
-  const levelBackgrounds = {
-    1: "/assets/worlds/campamento.png",
-    2: "/assets/worlds/selva.png",
-    3: "/assets/worlds/rio.png",
-    4: "/assets/worlds/montana.png",
-    5: "/assets/worlds/mercado.png",
-  }
-
-  const levelData = {
-    1: {
-      title: "Primeros Encuentros",
-      type: "roleplay",
-      duration: 8,
-      xpReward: 50,
-      coinReward: 20,
-      background: levelBackgrounds[1],
-      story:
-        "Llegas a un campamento de capibaras exploradoras en medio de la selva. Es tu primer día y necesitas presentarte al grupo. Tu objetivo es causar una buena primera impresión.",
-      hint: "Recuerda: una sonrisa genuina y mostrar interés por los demás son claves universales para conectar.",
-      steps: [
-        {
-          situation: "¿Cómo saludarás a una capibara desconocida que se acerca a ti?",
-          options: [
-            { text: "Con una sonrisa cálida y contacto visual directo", correct: true, points: 20 },
-            { text: "Con un saludo rápido sin mirar mucho", correct: false, points: 0 },
-            { text: "Esperando a que ella hable primero", correct: false, points: 0 },
-          ],
-          feedback: {
-            correct: "¡Excelente! El contacto visual y la sonrisa genuina transmiten confianza y apertura.",
-            incorrect:
-              "Una sonrisa cálida y contacto visual directo son fundamentales para una buena primera impresión.",
-          },
-        },
-        // ... existing steps ...
-      ],
-    },
-    // ... existing level data ...
-  }
-
-  const currentLevelData = levelData[levelId as keyof typeof levelData]
-
-  if (!currentLevelData) {
-    return (
-      <div className="max-w-4xl mx-auto p-6 text-center">
-        <h2 className="text-2xl font-bold mb-4">Nivel en Desarrollo</h2>
-        <p className="text-muted-foreground mb-4">Este nivel estará disponible pronto.</p>
-        <Button onClick={onBack}>Volver al curso</Button>
-      </div>
-    )
-  }
-
-  const currentStepData = currentLevelData.steps[currentStep]
-
-  const handleOptionSelect = (optionIndex: number) => {
-    setSelectedOption(optionIndex)
-    const option = currentStepData.options[optionIndex]
-
-    if (option.correct) {
-      setScore(score + option.points)
-      setIsCorrect(true)
-      if (!attemptedQuestions.has(currentStep)) {
-        setCorrectOnFirstTry(correctOnFirstTry + 1)
-      }
-    } else {
-      setIsCorrect(false)
-      onLoseLife() // Lose a life for wrong answer
-      setAttemptedQuestions(new Set(attemptedQuestions).add(currentStep))
-    }
-    setShowFeedback(true)
-  }
-
-  const handleNext = () => {
-    if (isCorrect) {
-      // Only advance if answer is correct
-      if (currentStep < currentLevelData.steps.length - 1) {
-        setCurrentStep(currentStep + 1)
-        setSelectedOption(null)
-        setShowFeedback(false)
-        setHintUsed(false)
-        setIsCorrect(null)
-      } else {
-        // Level completed
-        onComplete(currentLevelData.xpReward, currentLevelData.coinReward)
-      }
-    } else {
-      // Reset for immediate retry on same question
-      setSelectedOption(null)
-      setShowFeedback(false)
-      setIsCorrect(null)
-      // Don't advance currentStep - stay on same question
-    }
-  }
-
-  const showHint = () => {
-    if (!hintUsed) {
-      setHintUsed(true)
-    }
-  }
-
-  return (
-    <div className="max-w-4xl mx-auto">
-      <div className="flex items-center gap-4 mb-6">
-        <Button variant="outline" onClick={onBack} className="border-amber-300 text-amber-700 bg-transparent">
-          ← Volver al curso
-        </Button>
-        <h1 className="text-2xl font-bold text-amber-800">{currentLevelData.title}</h1>
-        <div className="text-3xl animate-bounce">{petData.icon}</div>
-        <div className="flex items-center gap-2 ml-auto">
-          <Heart className="w-5 h-5 text-red-500" />
-          <span className="font-bold text-red-600">
-            {userData.lives}/{userData.maxLives}
-          </span>
-        </div>
-      </div>
-
-      <Card className="relative overflow-hidden border-2 border-amber-300">
-        <div
-          className="absolute inset-0 opacity-20"
-          style={{
-            backgroundImage: `url('${currentLevelData.background}')`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-          }}
-        />
-
-        <CardContent className="p-8 relative z-10">
-          <div className="mb-6">
-            <div className="flex justify-between text-sm text-amber-700 mb-2">
-              <span>Progreso</span>
-              <span>
-                {correctOnFirstTry} correctas / {currentLevelData.steps.length} preguntas
-              </span>
-            </div>
-            <Progress value={((currentStep + 1) / currentLevelData.steps.length) * 100} />
-          </div>
-
-          {currentStep === 0 && (
-            <div className="mb-6 p-4 bg-amber-50 rounded-lg border border-amber-200">
-              <p className="text-amber-800">{currentLevelData.story}</p>
-            </div>
-          )}
-
-          <div className="mb-6 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="text-4xl">{petData.icon}</div>
-              <div>
-                <p className="text-sm text-amber-600">{petData.name} está aquí para ayudarte</p>
-                {hintUsed && (
-                  <div className="mt-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                    <p className="text-blue-800 text-sm">💡 {currentLevelData.hint}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-            <Button
-              onClick={showHint}
-              disabled={hintUsed}
-              variant="outline"
-              size="sm"
-              className="border-blue-300 text-blue-700 bg-transparent"
-            >
-              <Lightbulb className="w-4 h-4 mr-2" />
-              {hintUsed ? "Pista usada" : "Pedir pista"}
-            </Button>
-          </div>
-
-          <div className="mb-6">
-            <h3 className="text-xl font-semibold mb-4 text-amber-800">{currentStepData.situation}</h3>
-            <div className="space-y-3">
-              {currentStepData.options.map((option, index) => (
-                <Button
-                  key={index}
-                  onClick={() => handleOptionSelect(index)}
-                  disabled={showFeedback}
-                  variant={selectedOption === index ? "default" : "outline"}
-                  className={`w-full text-left justify-start p-4 h-auto ${
-                    selectedOption === index
-                      ? isCorrect
-                        ? "bg-green-500 hover:bg-green-600 text-white border-green-600"
-                        : "bg-red-500 hover:bg-red-600 text-white border-red-600"
-                      : "border-amber-300 text-amber-700 hover:bg-amber-50"
-                  }`}
-                >
-                  {option.text}
-                </Button>
-              ))}
-            </div>
-          </div>
-
-          {showFeedback && (
-            <div
-              className={`mb-6 p-4 rounded-lg border ${
-                isCorrect ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"
-              }`}
-            >
-              <p className={`font-medium ${isCorrect ? "text-green-800" : "text-red-800"}`}>
-                {isCorrect ? currentStepData.feedback.correct : currentStepData.feedback.incorrect}
-              </p>
-              <Button onClick={handleNext} className="mt-4 bg-amber-500 hover:bg-amber-600 text-white">
-                {isCorrect
-                  ? currentStep < currentLevelData.steps.length - 1
-                    ? "Siguiente"
-                    : "Completar nivel"
-                  : "Intentar de nuevo"}
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
-</file>
-
 <file path="components/QuizLevel.tsx">
 "use client"
 
@@ -4445,6 +3610,904 @@ const handleNextQuestion = () => {
         </Card>
       </div>
     </div>
+  )
+}
+</file>
+
+<file path="app/page.tsx">
+"use client"
+import { UserData, pets, Pet } from "@/lib/userTypes"
+import LevelComponent from "@/components/LevelComponent"
+import RoleplayLevel from "@/components/RoleplayLevel"
+import QuizLevel from "@/components/QuizLevel"
+import { useState, useEffect } from "react"
+import { Card, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Progress } from "@/components/ui/progress"
+import LoginButton from "@/components/LoginButton"
+import Dashboard from "@/components/Dashboard"
+
+
+
+import {
+  Trophy,
+  Heart,
+  Award,
+  Coins,
+  Gem,
+  ShoppingBag,
+  Map,
+  User,
+  Play,
+  Lock,
+  CheckCircle,
+  Sparkles,
+  Volume2,
+  Eye,
+  MessageCircle,
+  Users,
+  Presentation,
+  LogIn,
+  UserPlus,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react"
+
+
+
+interface Course {
+  id: string
+  title: string
+  description: string
+  icon: string
+  color: string
+  totalLevels: number
+  unlockedLevels: number
+  completedLevels: number
+}
+
+interface Level {
+  id: number
+  title: string
+  type: "roleplay" | "quiz" | "story" | "video" | "interactive"
+  duration: number
+  xpReward: number
+  coinReward: number
+  isCompleted: boolean
+  isUnlocked: boolean
+}
+
+const initialUserData: UserData = {
+  level: 1,
+  xp: 0,
+  coins: 100,
+  gems: 5,
+  lives: 5,
+  maxLives: 5,
+  lastDailyChest: null,
+  completedLevels: [],
+  badges: [],
+  currentPet: "baby-capybara",
+  unlockedPets: ["baby-capybara"],
+}
+
+const courses: Course[] = [
+  {
+    id: "communication-v1",
+    title: "Comunicación Efectiva",
+    description: "Domina el arte de comunicarte con confianza y empatía",
+    icon: "💬",
+    color: "from-amber-400 to-orange-500",
+    totalLevels: 12,
+    unlockedLevels: 3,
+    completedLevels: 0,
+  },
+  {
+    id: "communication-v2",
+    title: "Comunicación Efectiva v2",
+    description: "Versión avanzada con nuevos escenarios y desafíos",
+    icon: "🗣️",
+    color: "from-orange-500 to-red-500",
+    totalLevels: 12,
+    unlockedLevels: 1,
+    completedLevels: 0,
+  },
+  {
+    id: "communication-v3",
+    title: "Comunicación Efectiva v3",
+    description: "Edición especial con casos de estudio empresariales",
+    icon: "📢",
+    color: "from-yellow-400 to-amber-500",
+    totalLevels: 12,
+    unlockedLevels: 1,
+    completedLevels: 0,
+  },
+  {
+    id: "communication-v4",
+    title: "Comunicación v4",
+    description: "Técnicas avanzadas de persuasión y liderazgo",
+    icon: "🎯",
+    color: "from-amber-500 to-yellow-600",
+    totalLevels: 12,
+    unlockedLevels: 1,
+    completedLevels: 0,
+  },
+  {
+    id: "communication-premium",
+    title: "Comunicación Premium",
+    description: "Masterclass exclusiva con casos reales de éxito",
+    icon: "👑",
+    color: "from-yellow-600 to-orange-700",
+    totalLevels: 12,
+    unlockedLevels: 1,
+    completedLevels: 0,
+  },
+]
+
+const communicationLevels: Level[] = [
+  {
+    id: 1,
+    title: "Primeros Encuentros",
+    type: "roleplay",
+    duration: 8,
+    xpReward: 50,
+    coinReward: 20,
+    isCompleted: false,
+    isUnlocked: true,
+  },
+  {
+    id: 2,
+    title: "Escucha Activa",
+    type: "quiz",
+    duration: 6,
+    xpReward: 40,
+    coinReward: 15,
+    isCompleted: false,
+    isUnlocked: true,
+  },
+  {
+    id: 3,
+    title: "quiz",
+    type: "video",
+    duration: 10,
+    xpReward: 60,
+    coinReward: 25,
+    isCompleted: false,
+    isUnlocked: true,
+  },
+  {
+    id: 4,
+    title: "Manejo de Conflictos",
+    type: "quiz",
+    duration: 12,
+    xpReward: 80,
+    coinReward: 30,
+    isCompleted: false,
+    isUnlocked: false,
+  },
+  {
+    id: 5,
+    title: "Presentaciones Efectivas",
+    type: "quiz",
+    duration: 15,
+    xpReward: 100,
+    coinReward: 40,
+    isCompleted: false,
+    isUnlocked: false,
+  },
+]
+
+
+
+const petData = {
+  "baby-capybara": { name: "Capi Bebé", icon: "🐹" },
+  "adult-capybara": { name: "Capi Adulto", icon: "🦫" },
+  "golden-capybara": { name: "Capi Dorado", icon: "✨🦫" },
+  "ninja-capybara": { name: "Capi Ninja", icon: "🥷🦫" },
+}
+
+
+
+const DeckCarousel = ({
+  courses,
+  onCourseSelect,
+}: { courses: Course[]; onCourseSelect: (courseId: string) => void }) => {
+  const [currentIndex, setCurrentIndex] = useState(0)
+
+  const handleNext = () => {
+    setCurrentIndex((prevIndex) => (prevIndex + 1) % courses.length)
+  }
+
+  const handlePrev = () => {
+    setCurrentIndex((prevIndex) => (prevIndex - 1 + courses.length) % courses.length)
+  }
+
+  const getCardPosition = (index: number) => {
+    const position = (index - currentIndex + courses.length) % courses.length
+    if (position === 0) return "center"
+    if (position === 1 || position === courses.length - 1) return "side"
+    return "hidden"
+  }
+
+  return (
+    <div className="relative h-[550px] flex items-center justify-center px-8">
+      <div className="relative w-full max-w-5xl flex items-center justify-center">
+        {courses.map((course, index) => {
+          const position = getCardPosition(index)
+          const isActive = position === "center"
+          const isLeft = index < currentIndex || (currentIndex === 0 && index === courses.length - 1)
+
+          if (position === "hidden") return null
+
+          return (
+            <div
+              key={course.id}
+              className={`absolute transition-all duration-700 ease-out transform ${position === "center"
+                ? "z-20 scale-110 opacity-100 translate-x-0"
+                : position === "side"
+                  ? isLeft
+                    ? "z-10 scale-85 opacity-50 -translate-x-80"
+                    : "z-10 scale-85 opacity-50 translate-x-80"
+                  : "opacity-0"
+                }`}
+              style={{
+                pointerEvents: isActive ? "auto" : "none",
+              }}
+            >
+              <div
+                className={`w-80 h-[450px] rounded-3xl p-8 shadow-2xl border-2 transition-all duration-700 bg-gradient-to-br ${course.color} ${isActive
+                  ? "cursor-pointer hover:scale-105 hover:shadow-3xl border-white/40 hover:border-white/60"
+                  : "cursor-default border-white/20"
+                  }`}
+                onClick={isActive ? () => onCourseSelect(course.id) : undefined}
+                tabIndex={isActive ? 0 : -1}
+                role="button"
+                data-active={isActive}
+                onKeyDown={(e) => {
+                  if (isActive && (e.key === "Enter" || e.key === " ")) {
+                    e.preventDefault()
+                    onCourseSelect(course.id)
+                  }
+                }}
+              >
+                <div className="h-full flex flex-col justify-between text-white">
+                  <div>
+                    <div className="text-6xl mb-6 text-center drop-shadow-lg">{course.icon}</div>
+                    <h3 className="text-2xl font-bold mb-4 text-center drop-shadow-md">{course.title}</h3>
+                    <p className="text-white/90 mb-6 text-center leading-relaxed drop-shadow-sm">
+                      {course.description}
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between text-sm text-white/90">
+                      <span className="font-medium">Progreso</span>
+                      <span className="font-bold">
+                        {course.completedLevels} / {course.totalLevels}
+                      </span>
+                    </div>
+                    <div className="w-full bg-white/20 rounded-full h-3 backdrop-blur-sm">
+                      <div
+                        className="bg-white h-3 rounded-full transition-all duration-500 shadow-sm"
+                        style={{ width: `${(course.completedLevels / course.totalLevels) * 100}%` }}
+                      />
+                    </div>
+
+                    {isActive && (
+                      <Button className="w-full bg-white/20 hover:bg-white/30 text-white border-2 border-white/40 hover:border-white/60 backdrop-blur-sm font-bold py-3 rounded-xl transition-all duration-300">
+                        {course.completedLevels > 0 ? "Continuar Aventura" : "Comenzar Aventura"}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      <Button
+        variant="outline"
+        size="lg"
+        onClick={handlePrev}
+        className="absolute left-4 z-30 w-16 h-16 rounded-full border-2 border-white/40 text-white hover:bg-white/20 bg-black/20 backdrop-blur-md hover:border-white/60 transition-all duration-300"
+        aria-label="Curso anterior"
+      >
+        <ChevronLeft className="w-8 h-8" />
+      </Button>
+
+      <Button
+        variant="outline"
+        size="lg"
+        onClick={handleNext}
+        className="absolute right-4 z-30 w-16 h-16 rounded-full border-2 border-white/40 text-white hover:bg-white/20 bg-black/20 backdrop-blur-md hover:border-white/60 transition-all duration-300"
+        aria-label="Siguiente curso"
+      >
+        <ChevronRight className="w-8 h-8" />
+      </Button>
+
+      <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex gap-3">
+        {courses.map((_, index) => (
+          <button
+            key={index}
+            onClick={() => setCurrentIndex(index)}
+            className={`w-3 h-3 rounded-full transition-all duration-300 ${index === currentIndex ? "bg-white shadow-lg scale-125" : "bg-white/40 hover:bg-white/60"
+              }`}
+            aria-label={`Ir al curso ${index + 1}`}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+export default function Nu9veAcademy() {
+  const [userData, setUserData] = useState<UserData>(initialUserData)
+  const [currentView, setCurrentView] = useState<"welcome" | "dashboard" | "course" | "level" | "shop" | "profile">(
+    "welcome",
+  )
+  const [showDailyChest, setShowDailyChest] = useState(true)
+  const [chestAnimation, setChestAnimation] = useState(false)
+  const [lifeTimer, setLifeTimer] = useState(0)
+  const [currentLevel, setCurrentLevel] = useState<number | null>(null)
+
+  // const [selectedCourse, setSelectedCourse] = useState<string>("communication-v1")
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setUserData((prev: UserData) => {
+        if (prev.lives < prev.maxLives) {
+          const newTimer = lifeTimer + 1
+          if (newTimer >= 15) {
+            setLifeTimer(0)
+            return { ...prev, lives: prev.lives + 1 }
+          } else {
+            setLifeTimer(newTimer)
+            return prev
+          }
+        }
+        return prev
+      })
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [lifeTimer])
+
+  // Check for daily chest availability
+  useEffect(() => {
+    const today = new Date().toDateString()
+    if (userData.lastDailyChest !== today) {
+      setShowDailyChest(true)
+    }
+  }, [userData.lastDailyChest])
+
+  const openDailyChest = () => {
+    setChestAnimation(true)
+    const rewards = {
+      coins: Math.floor(Math.random() * 50) + 25,
+      gems: Math.floor(Math.random() * 3) + 1,
+      xp: Math.floor(Math.random() * 30) + 20,
+    }
+
+    setTimeout(() => {
+      setUserData((prev) => ({
+        ...prev,
+        coins: prev.coins + rewards.coins,
+        gems: prev.gems + rewards.gems,
+        xp: prev.xp + rewards.xp,
+        lastDailyChest: new Date().toDateString(),
+      }))
+      setShowDailyChest(false)
+      setChestAnimation(false)
+    }, 2000)
+  }
+
+  const buyLife = () => {
+    if (userData.lives < userData.maxLives && userData.coins >= 15) {
+      setUserData((prev) => ({
+        ...prev,
+        lives: prev.lives + 1,
+        coins: prev.coins - 15,
+      }))
+    }
+  }
+
+  const startLevel = (levelId: number) => {
+    setCurrentLevel(levelId)
+    setCurrentView("level")
+  }
+
+  // const buyPet = (petId: string, price: number) => {
+  //   if (userData.coins >= price) {
+  //     setUserData((prev) => ({
+  //       ...prev,
+  //       coins: prev.coins - price,
+  //       unlockedPets: [...prev.unlockedPets, petId],
+  //     }))
+  //   }
+  // }
+
+  // const selectPet = (petId: string) => {
+  //   setUserData((prev) => ({
+  //     ...prev,
+  //     currentPet: petId,
+  //   }))
+  // }
+
+  const loseLife = () => {
+    setUserData((prev) => ({
+      ...prev,
+      lives: Math.max(0, prev.lives - 1),
+    }))
+  }
+
+  const completeLevel = (levelId: number, xp: number, coins: number) => {
+    setUserData((prev) => {
+      const newCompletedLevels = [...prev.completedLevels]
+      if (!newCompletedLevels.includes(levelId)) {
+        newCompletedLevels.push(levelId)
+      }
+
+      return {
+        ...prev,
+        xp: prev.xp + xp,
+        coins: prev.coins + coins,
+        completedLevels: newCompletedLevels,
+      }
+    })
+
+    const nextLevelIndex = communicationLevels.findIndex((level) => level.id === levelId + 1)
+    if (nextLevelIndex !== -1) {
+      communicationLevels[nextLevelIndex].isUnlocked = true
+    }
+
+    setCurrentView("course")
+  }
+
+  const renderWelcome = () => (
+    <div
+      className="relative min-h-screen w-full flex items-center justify-center bg-cover bg-center"
+      style={{
+        backgroundImage: `url('jungle-adventure-background.jpg')`,
+      }}
+    >
+      {/* Capa oscura para contraste */}
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+
+      {/* Contenido */}
+      <div className="relative z-10 text-center text-white max-w-2xl mx-auto px-6">
+        {/* Mascota */}
+        <div className="text-[9rem] mb-10 animate-bounce">🦫</div>
+
+        {/* Título */}
+        <h1 className="text-6xl sm:text-7xl font-extrabold text-orange-400 mb-8 drop-shadow-lg">
+          Bienvenido a Nu9ve
+        </h1>
+
+        {/* Descripción */}
+        <p className="text-2xl sm:text-3xl text-gray-100 mb-16 leading-relaxed drop-shadow-md">
+          Aquí aprenderás a expresarte con <br />
+          confianza, empatía y claridad.
+        </p>
+
+        {/* Botones alineados iguales */}
+        <div className="flex flex-col sm:flex-row gap-6 justify-center">
+          {/* Iniciar sesión con Google */}
+          <div className="flex-1">
+            <LoginButton />
+          </div>
+
+          {/* Continuar como Invitado */}
+          <Button
+            onClick={() => setCurrentView("dashboard")}
+            className="flex-1 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white text-lg px-8 py-4 rounded-xl shadow-md flex items-center justify-center"
+          >
+            Continuar como Invitado
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+
+
+
+  const renderDashboard = () => (
+    <div
+      className="relative min-h-screen bg-cover bg-center bg-no-repeat"
+      style={{
+        backgroundImage: `url('/jungle-adventure-background.jpg')`, // tu fondo aquí
+      }}
+    >
+      {/* Degradado encima del fondo */}
+      <div className="absolute inset-0 bg-gradient-to-br from-amber-900/30 via-orange-900/20 to-yellow-900/30"></div>
+
+      {/* Contenido centrado encima */}
+      <div className="relative z-10 max-w-5xl mx-auto px-6 py-12 space-y-8">
+        {/* Tarjeta de bienvenida */}
+        <div className="flex items-center justify-between bg-white/90 backdrop-blur-md rounded-2xl p-6 shadow-lg">
+          <div className="flex items-center gap-4">
+            <div className="text-5xl animate-bounce">
+              {petData[userData.currentPet as keyof typeof petData]?.icon || "🐹"}
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-amber-800 mb-1">¡Hola, Explorador!</h1>
+              <p className="text-amber-600">Continúa tu aventura de aprendizaje</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2">
+              <Coins className="w-5 h-5 text-amber-500" />
+              <span className="font-semibold text-amber-800">{userData.coins}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Gem className="w-5 h-5 text-cyan-500" />
+              <span className="font-semibold text-cyan-800">{userData.gems}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Heart className="w-5 h-5 text-red-500" />
+              <span className="font-semibold text-red-800">
+                {userData.lives}/{userData.maxLives}
+              </span>
+              {userData.lives < userData.maxLives && (
+                <div className="text-xs text-red-600 ml-1">+1 en {15 - lifeTimer}s</div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Tarjeta de progreso */}
+        <div className="bg-white/90 backdrop-blur-md rounded-2xl p-4 shadow-lg">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold text-amber-800">Progreso General</h2>
+            <div className="text-sm text-amber-600">{userData.completedLevels.length} niveles completados</div>
+          </div>
+          <div className="mt-2">
+            <Progress
+              value={
+                (userData.completedLevels.length /
+                  courses.reduce((acc, course) => acc + course.totalLevels, 0)) *
+                100
+              }
+              className="h-2"
+            />
+          </div>
+        </div>
+
+        {/* Cofre diario */}
+        {showDailyChest && (
+          <Card className="border-2 border-amber-400 bg-white/90 backdrop-blur-md shadow-lg">
+            <CardContent className="p-6 text-center">
+              <div className={`text-6xl mb-4 ${chestAnimation ? "animate-bounce" : "animate-pulse"}`}>🎁</div>
+              <h3 className="text-xl font-bold mb-2 text-amber-800">¡Cofre Diario Disponible!</h3>
+              <p className="text-amber-600 mb-4">Tu capibara ha encontrado un tesoro especial</p>
+              <Button
+                onClick={openDailyChest}
+                className="bg-amber-500 hover:bg-amber-600 text-white shadow-lg"
+                disabled={chestAnimation}
+              >
+                {chestAnimation ? "Abriendo..." : "Abrir Cofre"}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Cursos */}
+        <div>
+          <h2 className="text-3xl font-bold mb-8 text-white text-center drop-shadow-lg">Selecciona tu Curso</h2>
+          <DeckCarousel
+            courses={courses.map((course) => ({
+              ...course,
+              completedLevels: userData.completedLevels.filter((level) => {
+                if (course.id === "communication-v1") return level >= 1 && level <= 12
+                if (course.id === "communication-v2") return level >= 13 && level <= 24
+                if (course.id === "communication-v3") return level >= 25 && level <= 36
+                if (course.id === "communication-v4") return level >= 37 && level <= 48
+                if (course.id === "communication-premium") return level >= 49 && level <= 60
+                return false
+              }).length,
+            }))}
+            onCourseSelect={() => setCurrentView("course")}
+          />
+        </div>
+      </div>
+    </div>
+  )
+
+
+  const renderShop = () => (
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 p-6">
+      <div className="max-w-4xl mx-auto">
+        <div className="flex items-center gap-4 mb-6">
+          <Button
+            variant="outline"
+            onClick={() => setCurrentView("dashboard")}
+            className="border-amber-300 text-amber-700"
+          >
+            ← Volver
+          </Button>
+          <h1 className="text-3xl font-bold text-amber-800">🛍️ Tienda de Mascotas</h1>
+        </div>
+
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {pets.map((pet) => (
+            <Card key={pet.id} className="border-2 border-amber-200 hover:border-amber-400 transition-colors">
+              <CardContent className="p-6 text-center">
+                <div className="text-6xl mb-4">{pet.icon}</div>
+                <h3 className="text-lg font-bold mb-2 text-amber-800">{pet.name}</h3>
+                <div className="flex items-center justify-center gap-2 mb-4">
+                  <Coins className="w-4 h-4 text-yellow-500" />
+                  <span className="font-bold text-amber-700">{pet.price === 0 ? "Gratis" : pet.price}</span>
+                </div>
+                {userData.unlockedPets.includes(pet.id) ? (
+                  <div className="space-y-2">
+                    {userData.currentPet === pet.id ? (
+                      <Button disabled className="w-full bg-green-100 text-green-800">
+                        ✓ Equipada
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={() => setUserData((prev) => ({ ...prev, currentPet: pet.id }))}
+                        className="w-full bg-amber-500 hover:bg-amber-600 text-white"
+                      >
+                        Equipar
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <Button
+                    onClick={() => {
+                      if (userData.coins >= pet.price) {
+                        setUserData((prev) => ({
+                          ...prev,
+                          coins: prev.coins - pet.price,
+                          unlockedPets: [...prev.unlockedPets, pet.id],
+                          currentPet: pet.id,
+                        }))
+                      }
+                    }}
+                    disabled={userData.coins < pet.price}
+                    className="w-full bg-amber-500 hover:bg-amber-600 text-white disabled:bg-gray-300"
+                  >
+                    {userData.coins >= pet.price ? "Comprar" : "Sin monedas"}
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+
+  const renderProfile = () => (
+    <div className="space-y-6">
+      <div className="flex items-center gap-4 mb-6">
+        <Button variant="outline" onClick={() => setCurrentView("dashboard")}>
+          ← Volver
+        </Button>
+        <h1 className="text-2xl font-bold">Mi Perfil</h1>
+      </div>
+
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center gap-6 mb-6">
+            <div className="text-8xl">{pets.find((p) => p.id === userData.currentPet)?.icon}</div>
+            <div>
+              <h2 className="text-2xl font-bold">Explorador Nu9ve</h2>
+              <p className="text-muted-foreground">Nivel {userData.level}</p>
+              <Progress value={userData.xp % 100} className="w-48 mt-2" />
+              <p className="text-sm text-muted-foreground mt-1">{userData.xp % 100}/100 XP para el siguiente nivel</p>
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-4">
+            <div className="text-center p-4 bg-muted rounded-lg">
+              <Trophy className="w-8 h-8 text-yellow-500 mx-auto mb-2" />
+              <p className="font-bold text-lg">{userData.completedLevels.length}</p>
+              <p className="text-sm text-muted-foreground">Niveles Completados</p>
+            </div>
+            <div className="text-center p-4 bg-muted rounded-lg">
+              <Award className="w-8 h-8 text-purple-500 mx-auto mb-2" />
+              <p className="font-bold text-lg">{userData.badges.length}</p>
+              <p className="text-sm text-muted-foreground">Insignias Obtenidas</p>
+            </div>
+            <div className="text-center p-4 bg-muted rounded-lg">
+              <Sparkles className="w-8 h-8 text-pink-500 mx-auto mb-2" />
+              <p className="font-bold text-lg">{userData.unlockedPets.length}</p>
+              <p className="text-sm text-muted-foreground">Mascotas Desbloqueadas</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+
+  const renderCourse = () => {
+    const getLevelIcon = (type: string) => {
+      switch (type) {
+        case "roleplay":
+          return <MessageCircle className="w-6 h-6 text-blue-500" />
+        case "interactive":
+          return <Volume2 className="w-6 h-6 text-green-500" />
+        case "video":
+          return <Eye className="w-6 h-6 text-purple-500" />
+        case "story":
+          return <Users className="w-6 h-6 text-orange-500" />
+        case "quiz":
+          return <Presentation className="w-6 h-6 text-red-500" />
+        default:
+          return <Play className="w-6 h-6" />
+      }
+    }
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4 mb-6">
+          <Button
+            variant="outline"
+            onClick={() => setCurrentView("dashboard")}
+            className="border-amber-300 text-amber-700 hover:bg-amber-50"
+          >
+            ← Volver
+          </Button>
+          <h1 className="text-2xl font-bold text-amber-800">Comunicación Efectiva</h1>
+          <div className="text-3xl animate-bounce">🦫</div>
+        </div>
+
+        <div className="relative">
+          <div className="grid gap-6">
+            {communicationLevels.map((level, index) => {
+              const isUnlocked = index === 0 || userData.completedLevels.includes(index)
+              const isCompleted = userData.completedLevels.includes(level.id)
+              const displayType = level.type === "roleplay" ? "roleplay" : "quiz"
+
+              return (
+                <Card
+                  key={level.id}
+                  className={`relative overflow-hidden transition-all duration-300 ${isUnlocked ? "cursor-pointer hover:shadow-xl hover:scale-[1.02]" : "opacity-50"
+                    } ${isCompleted ? "border-green-500 bg-green-50 shadow-green-200 shadow-lg" : "border-amber-200"}`}
+                >
+                  <div
+                    className="absolute inset-0 opacity-20"
+                    style={{
+                      backgroundImage: `url('/--getlevelbackground-level-id--.png')`,
+                      backgroundSize: "cover",
+                      backgroundPosition: "center",
+                    }}
+                  ></div>
+
+                  <CardContent className="p-6 relative z-10">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="relative">
+                          {isCompleted ? (
+                            <div className="relative">
+                              <CheckCircle className="w-12 h-12 text-green-500" />
+                              <div className="absolute -top-1 -right-1 text-xl">✨</div>
+                            </div>
+                          ) : isUnlocked ? (
+                            <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-600 rounded-full flex items-center justify-center text-white font-bold shadow-lg">
+                              {level.id}
+                            </div>
+                          ) : (
+                            <Lock className="w-12 h-12 text-gray-400" />
+                          )}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            {getLevelIcon(level.type)}
+                            <h3 className="text-lg font-bold text-amber-800">{level.title}</h3>
+                          </div>
+                          <div className="flex items-center gap-4 text-sm text-amber-600">
+                            <span>⏱️ {level.duration} min</span>
+                            <span>⭐ {level.xpReward} XP</span>
+                            <span>🪙 {level.coinReward} monedas</span>
+                            <Badge variant="secondary" className="lowercase">
+                              {displayType}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-amber-600 mt-2">
+                            {level.id === 1 && "Aprende a hacer una primera impresión positiva"}
+                            {level.id === 2 && "Técnicas para escuchar activamente"}
+                            {level.id === 3 && "Domina el lenguaje corporal efectivo"}
+                            {level.id === 4 && "Resuelve conflictos con confianza"}
+                            {level.id === 5 && "Presenta ideas de manera impactante"}
+                          </p>
+                        </div>
+                      </div>
+                      {isUnlocked && (
+                        <Button
+                          onClick={() => startLevel(level.id)}
+                          disabled={!isUnlocked}
+                          className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white shadow-lg"
+                        >
+                          {isCompleted ? "Repetir" : "Jugar"}
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <>
+      {currentView === "welcome" && renderWelcome()}
+      {currentView !== "welcome" && (
+        <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
+          <nav className="bg-white border-b border-amber-200 sticky top-0 z-50 shadow-sm">
+            <div className="max-w-6xl mx-auto px-4 py-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="text-2xl animate-pulse">🦫</div>
+                  <h1 className="text-xl font-bold text-amber-800">Nu9ve Academy</h1>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant={currentView === "dashboard" ? "default" : "ghost"}
+                    onClick={() => setCurrentView("dashboard")}
+                    size="sm"
+                    className={
+                      currentView === "dashboard"
+                        ? "bg-amber-500 hover:bg-amber-600"
+                        : "text-amber-700 hover:bg-amber-50"
+                    }
+                  >
+                    <Map className="w-4 h-4 mr-2" />
+                    Dashboard
+                  </Button>
+                  <Button
+                    variant={currentView === "shop" ? "default" : "ghost"}
+                    onClick={() => setCurrentView("shop")}
+                    size="sm"
+                    className={
+                      currentView === "shop" ? "bg-amber-500 hover:bg-amber-600" : "text-amber-700 hover:bg-amber-50"
+                    }
+                  >
+                    <ShoppingBag className="w-4 h-4 mr-2" />
+                    Tienda
+                  </Button>
+                  <Button
+                    variant={currentView === "profile" ? "default" : "ghost"}
+                    onClick={() => setCurrentView("profile")}
+                    size="sm"
+                    className={
+                      currentView === "profile" ? "bg-amber-500 hover:bg-amber-600" : "text-amber-700 hover:bg-amber-50"
+                    }
+                  >
+                    <User className="w-4 h-4 mr-2" />
+                    Perfil
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </nav>
+
+          <main className="min-h-screen w-full">
+            {currentView === "dashboard" && renderDashboard()}
+            {currentView === "course" && renderCourse()}
+            {currentView === "shop" && renderShop()}
+            {currentView === "profile" && renderProfile()}
+            {currentView === "level" && currentLevel && (
+              <LevelComponent
+                levelId={currentLevel}
+                onComplete={(xp, coins) => completeLevel(currentLevel, xp, coins)}
+                onBack={() => setCurrentView("course")}
+                userData={userData}
+                onLoseLife={loseLife}
+              />
+            )}
+          </main>
+        </div>
+      )}
+    </>
   )
 }
 </file>
