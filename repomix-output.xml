@@ -49,6 +49,7 @@ components.json
 components/AssessmentEngine.tsx
 components/AuthProvider.tsx
 components/CourseCard.tsx
+components/CourseList.tsx
 components/Dashboard.tsx
 components/DeckCarousel.tsx
 components/FirstEncountersLevel.tsx
@@ -65,6 +66,8 @@ eslint.config.mjs
 hooks/useSound.tsx
 lib/confetti.ts
 lib/firebase.ts
+lib/levelBackgrounds.ts
+lib/levels.ts
 lib/progress.ts
 lib/userTypes.ts
 lib/utils.ts
@@ -83,64 +86,282 @@ tsconfig.json
 <files>
 This section contains the contents of the repository's files.
 
-<file path="hooks/useSound.tsx">
-// hooks/useSound.tsx
+<file path="components/CourseList.tsx">
 "use client"
-import { useCallback } from "react"
 
-export default function useSound(path: string, volume: number = 0.6) {
-  const play = useCallback(() => {
-    const audio = new Audio(path)
-    audio.volume = volume
-    audio.play().catch(() => {})
-  }, [path, volume])
+import { Card, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import {
+  MessageCircle,
+  Volume2,
+  Eye,
+  Users,
+  Presentation,
+  Play,
+  Lock,
+  CheckCircle,
+} from "lucide-react"
 
-  return play
+interface Level {
+  id: number
+  title: string
+  type: "roleplay" | "quiz" | "story" | "video" | "interactive"
+  duration: number
+  xpReward: number
+  coinReward: number
+  isCompleted: boolean
+  isUnlocked: boolean
+}
+
+interface CourseListProps {
+  levels: Level[]
+  userData: any
+  onBack: () => void
+  onStartLevel: (levelId: number) => void
+}
+
+export default function CourseList({ levels, userData, onBack, onStartLevel }: CourseListProps) {
+  const getLevelIcon = (type: string) => {
+    switch (type) {
+      case "roleplay":
+        return <MessageCircle className="w-6 h-6 text-blue-500" />
+      case "interactive":
+        return <Volume2 className="w-6 h-6 text-green-500" />
+      case "video":
+        return <Eye className="w-6 h-6 text-purple-500" />
+      case "story":
+        return <Users className="w-6 h-6 text-orange-500" />
+      case "quiz":
+        return <Presentation className="w-6 h-6 text-red-500" />
+      default:
+        return <Play className="w-6 h-6" />
+    }
+  }
+
+  return (
+    <div
+      className="relative min-h-screen bg-cover bg-center bg-no-repeat"
+      style={{
+        backgroundImage: `url('/jungle-adventure-background.jpg')`, // cambia por el fondo que quieras
+      }}
+    >
+      {/* Degradado encima del fondo */}
+      <div className="absolute inset-0 bg-gradient-to-br from-amber-900/30 via-orange-900/20 to-yellow-900/30"></div>
+
+      <div className="relative z-10 max-w-5xl mx-auto px-6 py-12 space-y-8">
+        {/* Header */}
+        <div className="flex items-center gap-4 mb-6">
+          <Button
+            variant="outline"
+            onClick={onBack}
+            className="border-amber-300 text-amber-700 hover:bg-amber-50"
+          >
+            ← Volver
+          </Button>
+          <h1 className="text-2xl font-bold text-white drop-shadow-md">
+            Comunicación Efectiva
+          </h1>
+          <div className="text-3xl animate-bounce">🦫</div>
+        </div>
+
+        {/* Grid de niveles */}
+        <div className="grid gap-8">
+          {levels.map((level) => {
+            const isCompleted = userData.completedLevels.includes(level.id)
+
+            return (
+              <Card
+                key={level.id}
+                className={`relative overflow-hidden rounded-2xl shadow-xl transition-all duration-300
+                ${level.isUnlocked ? "cursor-pointer hover:scale-[1.02]" : "opacity-50"}
+                ${isCompleted ? "border-green-500 bg-green-50" : "border-amber-200 bg-white/90 backdrop-blur-md"}`}
+              >
+                <div
+                  className="absolute inset-0 opacity-15"
+                  style={{
+                    backgroundImage: `url('/assets/worlds/selva.png')`, // 👈 aquí puedes cambiar por mundo específico
+                    backgroundSize: "cover",
+                    backgroundPosition: "center",
+                  }}
+                ></div>
+
+                <CardContent className="p-6 relative z-10">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="relative">
+                        {isCompleted ? (
+                          <div className="relative">
+                            <CheckCircle className="w-12 h-12 text-green-500" />
+                            <div className="absolute -top-1 -right-1 text-xl">✨</div>
+                          </div>
+                        ) : level.isUnlocked ? (
+                          <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-600 rounded-full flex items-center justify-center text-white font-bold shadow-lg">
+                            {level.id}
+                          </div>
+                        ) : (
+                          <Lock className="w-12 h-12 text-gray-400" />
+                        )}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          {getLevelIcon(level.type)}
+                          <h3 className="text-lg font-bold text-amber-800">{level.title}</h3>
+                        </div>
+                        <div className="flex items-center gap-4 text-sm text-amber-600">
+                          <span>⏱️ {level.duration} min</span>
+                          <span>⭐ {level.xpReward} XP</span>
+                          <span>🪙 {level.coinReward} monedas</span>
+                          <Badge variant="secondary" className="lowercase">
+                            {level.type}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+
+                    {level.isUnlocked && (
+                      <Button
+                        onClick={() => onStartLevel(level.id)}
+                        disabled={!level.isUnlocked}
+                        className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white shadow-lg"
+                      >
+                        {isCompleted ? "Repetir" : "Jugar"}
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
 }
 </file>
 
-<file path="lib/confetti.ts">
-import confetti from "canvas-confetti"
-
-export function launchConfetti() {
-  confetti({
-    particleCount: 100,
-    spread: 70,
-    origin: { y: 0.6 },
-    colors: ["#FFD700", "#FF69B4", "#87CEFA", "#32CD32"]
-  })
+<file path="lib/levelBackgrounds.ts">
+export const levelBackgrounds: Record<string, string> = {
+  selva: "/assets/worlds/selva.png",
+  montana: "/assets/worlds/montana.png",
+  rio: "/assets/worlds/rio.png",
+  mercado: "/assets/worlds/mercado.png",
+  ciudad: "/assets/worlds/ciudad.png",
 }
 </file>
 
-<file path="lib/userTypes.ts">
-export interface UserData {
-  level: number
-  xp: number
-  coins: number
-  gems: number
-  lives: number
-  maxLives: number
-  lastDailyChest: string | null
-  completedLevels: number[]
-  badges: string[]
-  currentPet: string
-  unlockedPets: string[]
+<file path="lib/levels.ts">
+import { Level } from "@/lib/userTypes"
+
+/**
+ * 🔹 Aquí organizamos los cursos por categoría
+ * Cada curso tiene sus niveles (quiz / roleplay por ahora).
+ * En el futuro puedes meter más tipos: "interactive", "video", etc.
+ */
+export const courses: Record<string, Level[]> = {
+  communication: [
+    {
+      id: 1,
+      title: "Primeros Encuentros",
+      type: "roleplay",
+      duration: 8,
+      xpReward: 50,
+      coinReward: 20,
+      isCompleted: false,
+      isUnlocked: true,
+      world: "selva",
+    },
+    {
+      id: 2,
+      title: "Escucha Activa",
+      type: "quiz",
+      duration: 6,
+      xpReward: 40,
+      coinReward: 15,
+      isCompleted: false,
+      isUnlocked: true,
+      world: "montana",
+    },
+    {
+      id: 3,
+      title: "Comunicación No Verbal",
+      type: "quiz",
+      duration: 7,
+      xpReward: 45,
+      coinReward: 18,
+      isCompleted: false,
+      isUnlocked: false,
+      world: "rio",
+    },
+    {
+      id: 4,
+      title: "Resolviendo Malentendidos",
+      type: "roleplay",
+      duration: 9,
+      xpReward: 60,
+      coinReward: 25,
+      isCompleted: false,
+      isUnlocked: false,
+      world: "ciudad",
+    },
+  ],
+
+  leadership: [
+    {
+      id: 1,
+      title: "Liderazgo Positivo",
+      type: "quiz",
+      duration: 6,
+      xpReward: 40,
+      coinReward: 15,
+      isCompleted: false,
+      isUnlocked: true,
+      world: "mercado",
+    },
+    {
+      id: 2,
+      title: "Tomando Decisiones Difíciles",
+      type: "roleplay",
+      duration: 10,
+      xpReward: 70,
+      coinReward: 30,
+      isCompleted: false,
+      isUnlocked: false,
+      world: "rio",
+    },
+  ],
+
+  creativity: [
+    {
+      id: 1,
+      title: "Pensamiento Lateral",
+      type: "quiz",
+      duration: 7,
+      xpReward: 45,
+      coinReward: 20,
+      isCompleted: false,
+      isUnlocked: true,
+      world: "mercado",
+    },
+    {
+      id: 2,
+      title: "Improvisación en Equipo",
+      type: "roleplay",
+      duration: 8,
+      xpReward: 55,
+      coinReward: 22,
+      isCompleted: false,
+      isUnlocked: false,
+      world: "selva",
+    },
+  ],
 }
 
-export interface Pet {
-  id: string
-  name: string
-  icon: string
-  price: number
-  unlocked: boolean
-}
-
-export const pets: Pet[] = [
-  { id: "baby-capybara", name: "Capi Bebé", icon: "🐹", price: 0, unlocked: true },
-  { id: "adult-capybara", name: "Capi Adulto", icon: "🦫", price: 200, unlocked: false },
-  { id: "golden-capybara", name: "Capi Dorado", icon: "✨🦫", price: 1000, unlocked: false },
-  { id: "ninja-capybara", name: "Capi Ninja", icon: "🥷🦫", price: 1500, unlocked: false },
-]
+/**
+ * 🔹 Helper para obtener todos los niveles de todos los cursos
+ * (por si quieres listarlos en una sola vista de roadmap)
+ */
+export const allLevels: Level[] = Object.values(courses).flat()
 </file>
 
 <file path=".gitignore">
@@ -1001,7 +1222,9 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Star, Zap, Heart, MessageCircle, Trophy, ArrowLeft } from "lucide-react"
+import { levelBackgrounds } from "@/lib/levelBackgrounds"
 
+// 👇 tipos de datos
 interface Choice {
   text: string
   points: number
@@ -1021,229 +1244,84 @@ interface Scene {
 
 interface RoleplayLevelProps {
   levelId: number
+  world: "selva" | "montana" | "rio" | "mercado" | "ciudad"
   onComplete: (score: number, badges: string[]) => void
   onExit: () => void
 }
 
+// 👇 aquí usas tus escenas
 const communicationScenes: Scene[] = [
   {
     id: 1,
-    title: "🌿 Primer Encuentro en la Oficina",
-    description:
-      "Es tu primer día en una nueva empresa. Te encuentras con Capi, tu nuevo compañero de equipo, en la cocina. Parece tímido y evita el contacto visual.",
-    capibaraExpression: "😟",
-    situation: "Situación: Necesitas establecer una buena primera impresión y crear rapport con tu nuevo colega.",
+    title: "🌿 Primer Encuentro",
+    description: "Llegas a un campamento de capibaras exploradoras...",
+    capibaraExpression: "🙂",
+    situation: "Situación: Es tu primer día y necesitas presentarte al grupo.",
     choices: [
       {
-        text: "Me acerco con una sonrisa y digo: 'Hola, soy [tu nombre]. ¿Tú debes ser Capi? He escuchado cosas geniales sobre tu trabajo.'",
+        text: "Con una sonrisa cálida y contacto visual directo",
         points: 20,
-        principle: "Reciprocidad + Simpatía",
+        principle: "Empatía",
         nextScene: 2,
-        feedback:
-          "¡Excelente! Usaste el principio de reciprocidad al dar un cumplido primero, y simpatía al mostrar interés genuino.",
+        feedback: "¡Excelente! Mostraste apertura y calidez.",
       },
       {
-        text: "Le digo directamente: 'Hola, soy el nuevo. ¿Puedes explicarme cómo funcionan las cosas aquí?'",
-        points: 10,
-        principle: "Comunicación directa",
-        nextScene: 3,
-        feedback: "Funcional, pero podrías haber sido más cálido para establecer mejor conexión.",
-      },
-      {
-        text: "Espero a que él hable primero mientras reviso mi teléfono.",
-        points: 2,
+        text: "Con un saludo rápido sin mirar mucho",
+        points: 5,
         principle: "Pasividad",
-        nextScene: 4,
-        feedback: "Oportunidad perdida. La comunicación proactiva es clave para construir relaciones.",
+        nextScene: 2,
+        feedback: "Podría ser mejor, faltó conexión.",
+      },
+      {
+        text: "Esperando a que ella hable primero",
+        points: 2,
+        principle: "Inseguridad",
+        nextScene: 2,
+        feedback: "Oportunidad perdida, deberías tomar la iniciativa.",
       },
     ],
   },
   {
     id: 2,
-    title: "🤝 Construyendo Confianza",
-    description:
-      "Capi se ilumina con tu comentario y sonríe. Te cuenta que está trabajando en un proyecto desafiante y se siente un poco abrumado.",
-    capibaraExpression: "😊",
-    situation: "Situación: Tu colega se está abriendo contigo. Es momento de profundizar la conexión.",
-    choices: [
-      {
-        text: "'Entiendo perfectamente esa sensación. En mi trabajo anterior tuve un proyecto similar. ¿Te gustaría que conversemos sobre estrategias que me funcionaron?'",
-        points: 25,
-        principle: "Reciprocidad + Autoridad + Compromiso",
-        nextScene: 5,
-        feedback:
-          "¡Perfecto! Compartiste experiencia (autoridad), ofreciste ayuda (reciprocidad) y te comprometiste a apoyar.",
-      },
-      {
-        text: "'No te preocupes, seguro lo resolverás. Los proyectos siempre se ven más difíciles al principio.'",
-        points: 12,
-        principle: "Optimismo básico",
-        nextScene: 6,
-        feedback: "Positivo, pero podrías haber ofrecido apoyo más concreto para fortalecer la relación.",
-      },
-      {
-        text: "'Ah, qué mal. Bueno, yo también tengo mucho que aprender aquí.'",
-        points: 5,
-        principle: "Empatía superficial",
-        nextScene: 7,
-        feedback: "Muy básico. Perdiste la oportunidad de establecer una conexión más profunda.",
-      },
-    ],
-  },
-  {
-    id: 3,
-    title: "📋 Ajustando el Enfoque",
-    description:
-      "Capi responde de manera educada pero formal. Notas que mantiene cierta distancia. Decides cambiar tu estrategia.",
-    capibaraExpression: "😐",
-    situation: "Situación: Tu enfoque inicial fue muy directo. Necesitas crear más calidez en la interacción.",
-    choices: [
-      {
-        text: "'Disculpa si sonó muy formal. La verdad es que estoy un poco nervioso por el primer día. ¿Cómo te fue a ti cuando empezaste aquí?'",
-        points: 18,
-        principle: "Vulnerabilidad + Reciprocidad",
-        nextScene: 5,
-        feedback: "¡Genial! Mostraste vulnerabilidad auténtica y usaste una pregunta para crear reciprocidad.",
-      },
-      {
-        text: "'Perfecto, entonces ¿me puedes mostrar dónde está mi escritorio?'",
-        points: 8,
-        principle: "Funcionalidad",
-        nextScene: 6,
-        feedback: "Cumple el objetivo básico, pero no construye relación personal.",
-      },
-      {
-        text: "'Ok, supongo que cada uno tiene su estilo de trabajo.'",
-        points: 3,
-        principle: "Desconexión",
-        nextScene: 7,
-        feedback: "Te estás alejando en lugar de acercarte. La persistencia empática es importante.",
-      },
-    ],
-  },
-  {
-    id: 4,
-    title: "🔄 Segunda Oportunidad",
-    description:
-      "Capi termina su café y se prepara para irse. Te das cuenta de que necesitas actuar ahora o perderás la oportunidad de conectar.",
-    capibaraExpression: "😕",
-    situation: "Situación: Última oportunidad para establecer una conexión positiva antes de que se vaya.",
-    choices: [
-      {
-        text: "'¡Espera! Perdón por no presentarme antes. Soy [tu nombre] y me encantaría conocer más sobre el equipo. ¿Tienes un minuto?'",
-        points: 15,
-        principle: "Recuperación + Interés genuino",
-        nextScene: 5,
-        feedback: "Buena recuperación. Reconociste el error y mostraste interés genuino.",
-      },
-      {
-        text: "'Oye, ¿sabes dónde puedo encontrar a mi supervisor?'",
-        points: 6,
-        principle: "Funcional tardío",
-        nextScene: 6,
-        feedback: "Muy básico para una primera interacción. Podrías haber sido más personal.",
-      },
-      {
-        text: "Dejo que se vaya sin decir nada.",
-        points: 1,
-        principle: "Inacción",
-        nextScene: 7,
-        feedback: "Oportunidad completamente perdida. La comunicación requiere acción proactiva.",
-      },
-    ],
-  },
-  {
-    id: 5,
-    title: "🌟 Conexión Exitosa",
-    description:
-      "¡Excelente! Has establecido una conexión genuina con Capi. Él se ofrece a presentarte al resto del equipo y a ayudarte durante tu primera semana.",
+    title: "🎯 Fin del nivel",
+    description: "Has terminado este roleplay de prueba.",
     capibaraExpression: "🤗",
-    situation: "Resultado: Tu enfoque empático y auténtico ha creado el inicio de una gran relación profesional.",
-    choices: [
-      {
-        text: "Continuar al siguiente desafío",
-        points: 30,
-        principle: "Éxito en construcción de rapport",
-        nextScene: 8,
-        feedback: "¡Felicitaciones! Dominaste los principios de comunicación efectiva en el primer encuentro.",
-      },
-    ],
-  },
-  {
-    id: 6,
-    title: "👍 Progreso Moderado",
-    description:
-      "Capi te ayuda con lo básico y es cordial, pero la interacción se mantiene en un nivel superficial. Hay potencial para mejorar.",
-    capibaraExpression: "🙂",
-    situation: "Resultado: Funcional pero sin conexión profunda. Aprendiste que la calidez personal es importante.",
-    choices: [
-      {
-        text: "Reflexionar y continuar",
-        points: 15,
-        principle: "Aprendizaje continuo",
-        nextScene: 8,
-        feedback: "Bien. Reconoces que hay espacio para mejorar en crear conexiones más profundas.",
-      },
-    ],
-  },
-  {
-    id: 7,
-    title: "⚠️ Oportunidad de Aprendizaje",
-    description:
-      "La interacción no logró crear una conexión significativa. Capi se mantiene distante y formal contigo.",
-    capibaraExpression: "😔",
-    situation:
-      "Resultado: Reflexiona sobre cómo la comunicación proactiva y empática es esencial para construir relaciones.",
-    choices: [
-      {
-        text: "Aprender de la experiencia",
-        points: 8,
-        principle: "Reflexión y crecimiento",
-        nextScene: 8,
-        feedback: "Importante lección: la comunicación efectiva requiere iniciativa, empatía y autenticidad.",
-      },
-    ],
-  },
-  {
-    id: 8,
-    title: "🎯 Reflexión y Aprendizaje",
-    description:
-      "Has completado el primer nivel de comunicación. Cada decisión aplicó diferentes principios de comunicación efectiva en el entorno profesional.",
-    capibaraExpression: "🎓",
-    situation: "¡Nivel completado! Revisa tus resultados y los principios que aplicaste.",
+    situation: "¡Felicidades! Completaste el nivel.",
     choices: [],
   },
 ]
 
+// 👇 insignias de ejemplo
 const badges = [
-  { name: "Empático", threshold: 50, icon: Heart, description: "Mostraste gran empatía y comprensión" },
-  { name: "Comunicador", threshold: 70, icon: MessageCircle, description: "Excelente habilidad de comunicación" },
-  { name: "Constructor de Relaciones", threshold: 90, icon: Star, description: "Maestro en crear conexiones" },
-  { name: "Líder Natural", threshold: 110, icon: Trophy, description: "Liderazgo excepcional" },
+  { name: "Empático", threshold: 20, icon: Heart },
+  { name: "Comunicador", threshold: 30, icon: MessageCircle },
 ]
 
-export default function RoleplayLevel({ levelId, onComplete, onExit }: RoleplayLevelProps) {
+export default function RoleplayLevel({
+  levelId,
+  world,
+  onComplete,
+  onExit,
+}: RoleplayLevelProps) {
   const [currentScene, setCurrentScene] = useState(1)
   const [score, setScore] = useState(0)
   const [earnedBadges, setEarnedBadges] = useState<string[]>([])
   const [showFeedback, setShowFeedback] = useState(false)
   const [lastChoice, setLastChoice] = useState<Choice | null>(null)
-  const [choiceHistory, setChoiceHistory] = useState<number[]>([])
 
   const scene = communicationScenes.find((s) => s.id === currentScene)
+  const backgroundImage = levelBackgrounds[world] || levelBackgrounds["selva"]
 
   const makeChoice = (choiceIndex: number) => {
     if (!scene) return
-
     const choice = scene.choices[choiceIndex]
     const newScore = score + choice.points
 
     setLastChoice(choice)
     setShowFeedback(true)
     setScore(newScore)
-    setChoiceHistory([...choiceHistory, choiceIndex])
 
-    // Check for new badges
+    // otorgar badges
     const newBadges = badges
       .filter((badge) => newScore >= badge.threshold && !earnedBadges.includes(badge.name))
       .map((badge) => badge.name)
@@ -1254,205 +1332,78 @@ export default function RoleplayLevel({ levelId, onComplete, onExit }: RoleplayL
 
     setTimeout(() => {
       setShowFeedback(false)
-      if (choice.nextScene === 8) {
+      if (choice.nextScene === 2) {
         onComplete(newScore, [...earnedBadges, ...newBadges])
       } else {
         setCurrentScene(choice.nextScene)
       }
-    }, 3000)
-  }
-
-  const getScoreLevel = () => {
-    if (score >= 100) return { level: "Maestro Comunicador", color: "text-yellow-500", bg: "bg-yellow-100" }
-    if (score >= 80) return { level: "Comunicador Experto", color: "text-green-500", bg: "bg-green-100" }
-    if (score >= 60) return { level: "Buen Comunicador", color: "text-blue-500", bg: "bg-blue-100" }
-    if (score >= 40) return { level: "Aprendiz", color: "text-purple-500", bg: "bg-purple-100" }
-    return { level: "Principiante", color: "text-gray-500", bg: "bg-gray-100" }
+    }, 2000)
   }
 
   if (!scene) return null
 
+  // vista de feedback
   if (showFeedback && lastChoice) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 p-4 flex items-center justify-center">
-        <Card className="max-w-2xl w-full animate-bounce-in">
-          <CardContent className="p-8 text-center">
-            <div className="text-6xl mb-4">✨</div>
-            <h3 className="text-2xl font-bold mb-4">¡Excelente elección!</h3>
-            <div className="bg-primary/10 rounded-lg p-4 mb-4">
-              <p className="text-lg font-semibold text-primary mb-2">+{lastChoice.points} puntos</p>
-              <Badge className="mb-3">{lastChoice.principle}</Badge>
-              <p className="text-muted-foreground">{lastChoice.feedback}</p>
-            </div>
-            <div className="flex items-center justify-center gap-2">
-              <Star className="w-5 h-5 text-yellow-500" />
-              <span className="font-bold">Puntuación total: {score}</span>
-            </div>
+      <div className="min-h-screen flex items-center justify-center bg-white/80">
+        <Card className="max-w-lg w-full animate-bounce-in">
+          <CardContent className="p-6 text-center">
+            <div className="text-5xl mb-4">✨</div>
+            <h3 className="text-xl font-bold mb-2">¡Tu elección!</h3>
+            <p className="mb-2">+{lastChoice.points} puntos</p>
+            <Badge>{lastChoice.principle}</Badge>
+            <p className="text-sm mt-2">{lastChoice.feedback}</p>
           </CardContent>
         </Card>
       </div>
     )
   }
 
+  // vista normal
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-4">
-      <div className="max-w-4xl mx-auto space-y-6">
+    <div
+      className="min-h-screen bg-cover bg-center bg-no-repeat relative"
+      style={{ backgroundImage: `url(${backgroundImage})` }}
+    >
+      <div className="absolute inset-0 bg-black/20"></div>
+
+      <div className="relative z-10 max-w-4xl mx-auto py-8 space-y-6">
         {/* Header */}
-        <Card className="bg-gradient-to-r from-primary to-secondary text-white border-0">
+        <Card className="bg-white/80">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <Button variant="ghost" onClick={onExit} className="text-white hover:bg-white/20">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Salir
+              <Button variant="ghost" onClick={onExit}>
+                <ArrowLeft className="w-4 h-4 mr-2" /> Salir
               </Button>
               <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <Star className="w-5 h-5 text-yellow-300" />
-                  <span className="font-bold text-lg">{score}</span>
-                </div>
-                <div className="flex gap-1">
-                  {earnedBadges.map((badge, index) => {
-                    const badgeInfo = badges.find((b) => b.name === badge)
-                    if (!badgeInfo) return null
-                    const IconComponent = badgeInfo.icon
-                    return (
-                      <Badge key={index} variant="secondary" className="animate-pulse-glow">
-                        <IconComponent className="w-3 h-3 mr-1" />
-                        {badge}
-                      </Badge>
-                    )
-                  })}
-                </div>
+                <Star className="w-5 h-5 text-yellow-500" />
+                <span className="font-bold">{score} pts</span>
               </div>
             </div>
-            <Progress value={(currentScene / 8) * 100} className="bg-white/20" />
-            <p className="text-sm text-white/80">Escena {currentScene} de 8</p>
+            <Progress value={(currentScene / communicationScenes.length) * 100} />
           </CardHeader>
         </Card>
 
-        {/* Scene Content */}
-        <Card className="overflow-hidden">
-          <CardHeader className="bg-gradient-to-r from-primary/10 to-secondary/10">
-            <CardTitle className="text-xl text-balance">{scene.title}</CardTitle>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="text-center mb-6">
-              <div className="text-8xl mb-4 animate-bounce-in">{scene.capibaraExpression}</div>
-              <p className="text-lg text-muted-foreground text-pretty leading-relaxed mb-4">{scene.description}</p>
-              <div className="bg-muted/50 rounded-lg p-4 mb-6">
-                <p className="text-sm font-semibold text-primary">{scene.situation}</p>
-              </div>
-            </div>
-
-            {/* Choices */}
-            {scene.choices.length > 0 && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-center mb-4">¿Cómo respondes?</h3>
-                {scene.choices.map((choice, index) => (
-                  <Button
-                    key={index}
-                    onClick={() => makeChoice(index)}
-                    variant="outline"
-                    className="w-full p-6 h-auto text-left justify-start hover:bg-primary/5 hover:border-primary/50 transition-all duration-200"
-                  >
-                    <div className="flex items-start gap-4">
-                      <div className="bg-primary/10 rounded-full p-3 mt-1 flex-shrink-0">
-                        <Zap className="w-5 h-5 text-primary" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-pretty leading-relaxed text-base">{choice.text}</p>
-                        <div className="flex items-center gap-2 mt-3">
-                          <Badge variant="secondary" className="text-xs">
-                            +{choice.points} pts
-                          </Badge>
-                          <Badge variant="outline" className="text-xs">
-                            {choice.principle}
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-                  </Button>
-                ))}
-              </div>
-            )}
-
-            {/* Final Results */}
-            {currentScene === 8 && (
-              <div className="text-center space-y-6 animate-bounce-in">
-                <div className="bg-gradient-to-r from-primary/10 to-secondary/10 rounded-lg p-8">
-                  <Trophy className="w-20 h-20 text-yellow-500 mx-auto mb-4" />
-                  <h3 className="text-3xl font-bold mb-4">¡Nivel Completado!</h3>
-                  <div className={`inline-block px-4 py-2 rounded-lg ${getScoreLevel().bg} mb-4`}>
-                    <p className={`text-xl font-semibold ${getScoreLevel().color}`}>{getScoreLevel().level}</p>
-                  </div>
-                  <p className="text-muted-foreground text-lg">Puntuación final: {score} puntos</p>
-
-                  {earnedBadges.length > 0 && (
-                    <div className="mt-6">
-                      <p className="font-semibold mb-3 text-lg">Insignias obtenidas:</p>
-                      <div className="flex flex-wrap gap-3 justify-center">
-                        {earnedBadges.map((badge, index) => {
-                          const badgeInfo = badges.find((b) => b.name === badge)
-                          if (!badgeInfo) return null
-                          const IconComponent = badgeInfo.icon
-                          return (
-                            <div
-                              key={index}
-                              className="bg-primary text-primary-foreground rounded-lg p-3 animate-pulse-glow"
-                            >
-                              <IconComponent className="w-6 h-6 mx-auto mb-1" />
-                              <p className="text-sm font-semibold">{badge}</p>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <Button
-                  onClick={() => onComplete(score, earnedBadges)}
-                  className="bg-primary hover:bg-primary/90 text-lg px-8 py-3"
-                >
-                  Continuar
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Learning Tips */}
-        <Card className="bg-muted/30 border border-border/50">
+        {/* Escena */}
+        <Card>
           <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">🧠 Principios de Comunicación Efectiva</CardTitle>
+            <CardTitle>{scene.title}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
-              <div className="bg-background rounded-lg p-4">
-                <div className="font-semibold text-primary mb-1">Reciprocidad</div>
-                <div className="text-muted-foreground">Da valor antes de pedirlo</div>
-              </div>
-              <div className="bg-background rounded-lg p-4">
-                <div className="font-semibold text-primary mb-1">Simpatía</div>
-                <div className="text-muted-foreground">Conecta emocionalmente</div>
-              </div>
-              <div className="bg-background rounded-lg p-4">
-                <div className="font-semibold text-primary mb-1">Autoridad</div>
-                <div className="text-muted-foreground">Comparte experiencia relevante</div>
-              </div>
-              <div className="bg-background rounded-lg p-4">
-                <div className="font-semibold text-primary mb-1">Compromiso</div>
-                <div className="text-muted-foreground">Mantén coherencia en acciones</div>
-              </div>
-              <div className="bg-background rounded-lg p-4">
-                <div className="font-semibold text-primary mb-1">Vulnerabilidad</div>
-                <div className="text-muted-foreground">Sé auténtico y humano</div>
-              </div>
-              <div className="bg-background rounded-lg p-4">
-                <div className="font-semibold text-primary mb-1">Escucha Activa</div>
-                <div className="text-muted-foreground">Presta atención genuina</div>
-              </div>
-            </div>
+            <p className="mb-4">{scene.description}</p>
+            <div className="text-6xl mb-4">{scene.capibaraExpression}</div>
+            <p className="italic mb-6">{scene.situation}</p>
+
+            {/* Opciones */}
+            {scene.choices.map((choice, index) => (
+              <Button
+                key={index}
+                onClick={() => makeChoice(index)}
+                className="w-full mb-3"
+              >
+                {choice.text}
+              </Button>
+            ))}
           </CardContent>
         </Card>
       </div>
@@ -1508,74 +1459,6 @@ function Badge({
 }
 
 export { Badge, badgeVariants }
-</file>
-
-<file path="components/ui/button.tsx">
-import * as React from "react"
-import { Slot } from "@radix-ui/react-slot"
-import { cva, type VariantProps } from "class-variance-authority"
-import useSound from "@/hooks/useSound"
-import { cn } from "@/lib/utils"
-
-const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
-  {
-    variants: {
-      variant: {
-        default:
-          "bg-primary text-primary-foreground shadow-xs hover:bg-primary/90",
-        destructive:
-          "bg-destructive text-white shadow-xs hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
-        outline:
-          "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50",
-        secondary:
-          "bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80",
-        ghost:
-          "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
-        link: "text-primary underline-offset-4 hover:underline",
-      },
-      size: {
-        default: "h-9 px-4 py-2 has-[>svg]:px-3",
-        sm: "h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5",
-        lg: "h-10 rounded-md px-6 has-[>svg]:px-4",
-        icon: "size-9",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-      size: "default",
-    },
-  }
-)
-
-function Button({
-  className,
-  variant,
-  size,
-  asChild = false,
-  ...props
-}: React.ComponentProps<"button"> &
-  VariantProps<typeof buttonVariants> & {
-    asChild?: boolean
-  }) {
-  const Comp = asChild ? Slot : "button"
-  const playClick = useSound("/sounds/click.mp3")
-  return (
-    <Comp
-      data-slot="button"
-      className={cn(buttonVariants({ variant, size, className }))}
-     onClick={(e: any) => {
-       playClick()
-        if (onClick) {
-          onClick(e) // mantiene la lógica original del botón
-          }
-      }}
-      {...props}
-    />
-  )
-}
-
-export { Button, buttonVariants }
 </file>
 
 <file path="components/ui/card.tsx">
@@ -1732,6 +1615,34 @@ const eslintConfig = [
 export default eslintConfig;
 </file>
 
+<file path="hooks/useSound.tsx">
+// hooks/useSound.ts
+import { useCallback } from "react"
+
+export default function useSound(url: string, volume: number = 0.5) {
+  const play = useCallback(() => {
+    const audio = new Audio(url)
+    audio.volume = volume
+    audio.play().catch(() => {})
+  }, [url, volume])
+
+  return play
+}
+</file>
+
+<file path="lib/confetti.ts">
+import confetti from "canvas-confetti"
+
+export function launchConfetti() {
+  confetti({
+    particleCount: 100,
+    spread: 70,
+    origin: { y: 0.6 },
+    colors: ["#FFD700", "#FF69B4", "#87CEFA", "#32CD32"]
+  })
+}
+</file>
+
 <file path="lib/progress.ts">
 import { doc, setDoc, getDoc, collection, getDocs, query, orderBy, limit } from "firebase/firestore"
 import { db } from "./firebase"
@@ -1834,6 +1745,48 @@ export async function getLeaderboard(top: number = 10) {
         console.error("❌ Error al cargar leaderboard:", error)
         return []
     }
+}
+</file>
+
+<file path="lib/userTypes.ts">
+export interface UserData {
+  level: number
+  xp: number
+  coins: number
+  gems: number
+  lives: number
+  maxLives: number
+  lastDailyChest: string | null
+  completedLevels: number[]
+  badges: string[]
+  currentPet: string
+  unlockedPets: string[]
+}
+
+export interface Pet {
+  id: string
+  name: string
+  icon: string
+  price: number
+  unlocked: boolean
+}
+
+export const pets: Pet[] = [
+  { id: "baby-capybara", name: "Capi Bebé", icon: "🐹", price: 0, unlocked: true },
+  { id: "adult-capybara", name: "Capi Adulto", icon: "🦫", price: 200, unlocked: false },
+  { id: "golden-capybara", name: "Capi Dorado", icon: "✨🦫", price: 1000, unlocked: false },
+  { id: "ninja-capybara", name: "Capi Ninja", icon: "🥷🦫", price: 1500, unlocked: false },
+]
+export interface Level {
+  id: number
+  title: string
+  type: "roleplay" | "quiz" | "story" | "video" | "interactive"
+  duration: number
+  xpReward: number
+  coinReward: number
+  isCompleted: boolean
+  isUnlocked: boolean
+  world: "selva" | "montana" | "rio" | "mercado" | "ciudad"
 }
 </file>
 
@@ -2015,6 +1968,511 @@ const getLevelType = (id: number) => {
         <p className="text-muted-foreground mb-4">Tipo: {levelType}</p>
         <p className="text-sm text-muted-foreground">Este tipo de nivel estará disponible pronto</p>
       </div>
+    </div>
+  )
+}
+</file>
+
+<file path="components/ui/button.tsx">
+import * as React from "react"
+import { Slot } from "@radix-ui/react-slot"
+import { cva, type VariantProps } from "class-variance-authority"
+import useSound from "@/hooks/useSound"
+import { cn } from "@/lib/utils"
+
+const buttonVariants = cva(
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
+  {
+    variants: {
+      variant: {
+        default:
+          "bg-primary text-primary-foreground shadow-xs hover:bg-primary/90",
+        destructive:
+          "bg-destructive text-white shadow-xs hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
+        outline:
+          "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50",
+        secondary:
+          "bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80",
+        ghost:
+          "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
+        link: "text-primary underline-offset-4 hover:underline",
+      },
+      size: {
+        default: "h-9 px-4 py-2 has-[>svg]:px-3",
+        sm: "h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5",
+        lg: "h-10 rounded-md px-6 has-[>svg]:px-4",
+        icon: "size-9",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
+  }
+)
+
+function Button({
+  className,
+  variant,
+  size,
+  asChild = false,
+  onClick,
+  disableClickSound = false, // 👈 nuevo prop opcional
+  ...props
+}: React.ComponentProps<"button"> &
+  VariantProps<typeof buttonVariants> & {
+    asChild?: boolean
+    disableClickSound?: boolean
+  }) {
+  const Comp = asChild ? Slot : "button"
+  const playClick = useSound("/sounds/click.mp3")
+
+  return (
+    <Comp
+      data-slot="button"
+      className={cn(buttonVariants({ variant, size, className }))}
+      onClick={(e: any) => {
+        if (!disableClickSound) {
+          playClick()
+        }
+        if (onClick) {
+          onClick(e)
+        }
+      }}
+      {...props}
+    />
+  )
+}
+
+export { Button, buttonVariants }
+</file>
+
+<file path="lib/firebase.ts">
+// lib/firebase.ts
+import { initializeApp, getApps, getApp } from "firebase/app"
+import {
+    getAuth,
+    GoogleAuthProvider,
+    setPersistence,
+    browserLocalPersistence,
+} from "firebase/auth"
+import { getFirestore } from "firebase/firestore"
+
+const firebaseConfig = {
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN!,
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID!,
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET!,
+    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID!,
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID!,
+}
+
+// Evita re-crear la app en HMR
+export const app = getApps().length ? getApp() : initializeApp(firebaseConfig)
+
+// Auth + proveedor Google
+export const auth = getAuth(app)
+export const googleProvider = new GoogleAuthProvider()
+export const db = getFirestore(app)
+googleProvider.setCustomParameters({ prompt: "select_account" })
+
+// Persistencia en el navegador
+setPersistence(auth, browserLocalPersistence).catch(() => {
+    // Silencia errores de persistencia (p.ej., privacidad del navegador)
+})
+</file>
+
+<file path="tsconfig.json">
+{
+  "compilerOptions": {
+     "baseUrl": ".",
+    "target": "ES2017",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./*"] 
+    }
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
+}
+</file>
+
+<file path="components/AssessmentEngine.tsx">
+"use client"
+
+import { useState, useEffect } from "react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { Progress } from "@/components/ui/progress"
+import { Heart, Lightbulb, Award, Star } from "lucide-react"
+
+interface AssessmentItem {
+  id: string
+  question: string
+  options: {
+    text: string
+    correct: boolean
+    points: number
+  }[]
+  feedback: {
+    correct: string
+    incorrect: string
+  }
+  hint?: string
+}
+
+interface AssessmentLevel {
+  id: string
+  title: string
+  type: "roleplay" | "quiz" | "story" | "interactive"
+  hasContinuity: boolean
+  items: AssessmentItem[]
+  background?: string
+  story?: string
+}
+
+interface AssessmentEngineProps {
+  level: AssessmentLevel
+  userData: any
+  onComplete: (result: AssessmentResult) => void
+  onBack: () => void
+  onLoseLife: () => void
+}
+
+interface AssessmentResult {
+  score: number
+  mistakes: number
+  firstTryCorrect: number
+  medal: "platinum" | "gold" | "silver"
+  timeMs: number
+}
+
+export default function AssessmentEngine({ level, userData, onComplete, onBack, onLoseLife }: AssessmentEngineProps) {
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [selectedOption, setSelectedOption] = useState<number | null>(null)
+  const [showFeedback, setShowFeedback] = useState(false)
+  const [score, setScore] = useState(0)
+  const [mistakes, setMistakes] = useState(0)
+  const [firstTryCorrect, setFirstTryCorrect] = useState(0)
+  const [retryQueue, setRetryQueue] = useState<AssessmentItem[]>([])
+  const [isRetryRound, setIsRetryRound] = useState(false)
+  const [hintUsed, setHintUsed] = useState(false)
+  const [startTime] = useState(Date.now())
+  const [attemptedItems, setAttemptedItems] = useState<Set<string>>(new Set())
+  const [shuffledItems, setShuffledItems] = useState<AssessmentItem[]>([])
+  const isRoleplay = level.type === "roleplay"
+
+  const petDataMap: Record<"baby-capybara" | "adult-capybara" | "golden-capybara" | "ninja-capybara", { icon: string; name: string }> = {
+    "baby-capybara": { icon: "🐹", name: "Capi Bebé" },
+    "adult-capybara": { icon: "🦫", name: "Capi Adulto" },
+    "golden-capybara": { icon: "✨🦫", name: "Capi Dorado" },
+    "ninja-capybara": { icon: "🥷🦫", name: "Capi Ninja" },
+  }
+  const petData = petDataMap[userData.currentPet as keyof typeof petDataMap] || { icon: "🐹", name: "Capi Bebé" }
+
+  // Initialize shuffled items for quiz levels
+  useEffect(() => {
+    if (!level.hasContinuity) {
+      // Shuffle items with stable seed for resume capability
+      const shuffled = [...level.items].sort(() => Math.random() - 0.5)
+      setShuffledItems(shuffled)
+    } else {
+      setShuffledItems(level.items)
+    }
+  }, [level])
+
+  const currentItems = isRetryRound ? retryQueue : shuffledItems
+  const currentItem = currentItems[currentIndex]
+
+  const calculateMedal = (mistakeCount: number): "platinum" | "gold" | "silver" => {
+    if (mistakeCount === 0) return "platinum"
+    if (mistakeCount <= 2) return "gold"
+    return "silver"
+  }
+
+  const handleOptionSelect = (optionIndex: number) => {
+  setSelectedOption(optionIndex)
+  const option = currentItem.options[optionIndex]
+  const isFirstTry = !attemptedItems.has(currentItem.id)
+
+  if (option.correct) {
+    const points = isFirstTry ? option.points + 25 : option.points
+    setScore((prev) => prev + points)
+    if (isFirstTry) setFirstTryCorrect((prev) => prev + 1)
+    if (isRetryRound) {
+      // Saca del retryQueue si era de revisión
+      setRetryQueue((prev) => prev.filter((item) => item.id !== currentItem.id))
+    }
+  } else {
+    setMistakes((prev) => prev + 1)
+    setScore((prev) => prev - 50)
+    onLoseLife()
+    setAttemptedItems((prev) => new Set(prev).add(currentItem.id))
+
+    // SOLO los quizzes se revisan al final
+    if (!isRoleplay && !isRetryRound) {
+      setRetryQueue((prev) => prev.find((i) => i.id === currentItem.id) ? prev : [...prev, currentItem])
+    }
+  }
+
+  setShowFeedback(true)
+}
+
+// Reemplaza handleNext:
+const handleNext = () => {
+  const option = currentItem.options[selectedOption!]
+
+  if (isRoleplay) {
+    // Roleplay: reintento inmediato hasta acertar
+    if (option.correct) {
+      if (currentIndex < currentItems.length - 1) {
+        setCurrentIndex((prev) => prev + 1)
+        resetForNextItem()
+      } else {
+        completeAssessment()
+      }
+    } else {
+      // Reintentar esta misma
+      resetForNextItem()
+    }
+    return
+  }
+
+  // Quiz:
+  if (!isRetryRound) {
+    // Primera pasada: AVANZAR SIEMPRE, haya sido correcto o no
+    if (currentIndex < currentItems.length - 1) {
+      setCurrentIndex((prev) => prev + 1)
+      resetForNextItem()
+    } else {
+      // Primera pasada terminada → ver si hay revisión
+      if (retryQueue.length > 0) {
+        setIsRetryRound(true)
+        setCurrentIndex(0)
+        resetForNextItem()
+      } else {
+        completeAssessment()
+      }
+    }
+  } else {
+    // En revisión: quedarse hasta acertar
+    if (option.correct) {
+      if (retryQueue.filter((item) => item.id !== currentItem.id).length === 0) {
+        completeAssessment()
+      } else {
+        setCurrentIndex(0) // volvemos al inicio de la cola que queda
+        resetForNextItem()
+      }
+    } else {
+      // Reintentar esta misma
+      resetForNextItem()
+    }
+  }
+}
+
+  const resetForNextItem = () => {
+    setSelectedOption(null)
+    setShowFeedback(false)
+    setHintUsed(false)
+  }
+
+  const completeAssessment = () => {
+    const timeMs = Date.now() - startTime
+    const medal = calculateMedal(mistakes)
+
+    const result: AssessmentResult = {
+      score,
+      mistakes,
+      firstTryCorrect,
+      medal,
+      timeMs,
+    }
+
+    onComplete(result)
+  }
+
+  const showHint = () => {
+    if (!hintUsed && currentItem.hint) {
+      setHintUsed(true)
+    }
+  }
+
+  const getMedalIcon = (medal: string) => {
+    switch (medal) {
+      case "platinum":
+        return <Award className="w-5 h-5 text-blue-500" />
+      case "gold":
+        return <Award className="w-5 h-5 text-yellow-500" />
+      case "silver":
+        return <Award className="w-5 h-5 text-gray-400" />
+      default:
+        return <Star className="w-5 h-5 text-gray-300" />
+    }
+  }
+
+  if (!currentItem) {
+    return (
+      <div className="max-w-4xl mx-auto p-6 text-center">
+        <h2 className="text-2xl font-bold mb-4">Cargando...</h2>
+      </div>
+    )
+  }
+
+  return (
+    <div className="max-w-4xl mx-auto">
+      <div className="flex items-center gap-4 mb-6">
+        <Button variant="outline" onClick={onBack} className="border-amber-300 text-amber-700 bg-transparent">
+          ← Volver al curso
+        </Button>
+        <h1 className="text-2xl font-bold text-amber-800">{level.title}</h1>
+        <div className="text-3xl animate-bounce">{petData.icon}</div>
+        <div className="flex items-center gap-4 ml-auto">
+          <div className="flex items-center gap-2">
+            <Heart className="w-5 h-5 text-red-500" />
+            <span className="font-bold text-red-600">
+              {userData.lives}/{userData.maxLives}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            {getMedalIcon(calculateMedal(mistakes))}
+            <span className="text-sm text-gray-600">
+              {mistakes === 0 ? "Platino" : mistakes <= 2 ? "Oro" : "Plata"}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <Card className="relative overflow-hidden border-2 border-amber-300">
+        {level.background && (
+          <div
+            className="absolute inset-0 opacity-20"
+            style={{
+              backgroundImage: `url('${level.background}')`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+            }}
+          />
+        )}
+
+        <CardContent className="p-8 relative z-10">
+          <div className="mb-2 flex items-center justify-between">
+  <span className="text-sm font-medium text-amber-800">Progreso</span>
+  <span className="text-xs text-amber-700">
+    {isRetryRound && level.type === "quiz"
+      ? "Corrigiendo errores"
+      : `${currentIndex + 1} / ${currentItems.length}`}
+  </span>
+</div>
+
+<Progress
+  className="h-2"
+  value={
+    isRetryRound && level.type === "quiz"
+      ? 100
+      : Math.round(((currentIndex + 1) / Math.max(1, currentItems.length)) * 100)
+  }
+/>
+          {currentIndex === 0 && level.story && !isRetryRound && (
+            <div className="mb-6 p-4 bg-amber-50 rounded-lg border border-amber-200">
+              <p className="text-amber-800">{level.story}</p>
+            </div>
+          )}
+
+          <div className="mb-6 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="text-4xl">{petData.icon}</div>
+              <div>
+                <p className="text-sm text-amber-600">{petData.name} está aquí para ayudarte</p>
+                {hintUsed && currentItem.hint && (
+                  <div className="mt-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <p className="text-blue-800 text-sm">💡 {currentItem.hint}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+            {currentItem.hint && (
+              <Button
+                onClick={showHint}
+                disabled={hintUsed}
+                variant="outline"
+                size="sm"
+                className="border-blue-300 text-blue-700 bg-transparent"
+              >
+                <Lightbulb className="w-4 h-4 mr-2" />
+                {hintUsed ? "Pista usada" : "Pedir pista"}
+              </Button>
+            )}
+          </div>
+
+          <div className="mb-6">
+            <h3 className="text-xl font-semibold mb-4 text-amber-800">{currentItem.question}</h3>
+            <div className="space-y-3">
+              {currentItem.options.map((option, index) => (
+                <Button
+                  key={index}
+                  onClick={() => handleOptionSelect(index)}
+                  disabled={showFeedback}
+                  variant={selectedOption === index ? "default" : "outline"}
+                  className={`w-full text-left justify-start p-4 h-auto ${
+                    selectedOption === index
+                      ? option.correct
+                        ? "bg-green-500 hover:bg-green-600 text-white border-green-600"
+                        : "bg-red-500 hover:bg-red-600 text-white border-red-600"
+                      : "border-amber-300 text-amber-700 hover:bg-amber-50"
+                  }`}
+                >
+                  {option.text}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          {showFeedback && (
+            <div
+              className={`mb-6 p-4 rounded-lg border ${
+                currentItem.options[selectedOption!].correct
+                  ? "bg-green-50 border-green-200"
+                  : "bg-red-50 border-red-200"
+              }`}
+            >
+              <p
+                className={`font-medium ${
+                  currentItem.options[selectedOption!].correct ? "text-green-800" : "text-red-800"
+                }`}
+              >
+                {currentItem.options[selectedOption!].correct
+                  ? currentItem.feedback.correct
+                  : currentItem.feedback.incorrect}
+              </p>
+              <Button onClick={handleNext} className="mt-4 bg-amber-500 hover:bg-amber-600 text-white">
+                {selectedOption != null && currentItem.options[selectedOption].correct
+              
+                  ? (isRetryRound && retryQueue.filter((item) => item.id !== currentItem.id).length === 0) ||
+                    (!isRetryRound && currentIndex === currentItems.length - 1 && retryQueue.length === 0)
+                    ? "Completar nivel"
+                    : "Siguiente"
+                  : "Intentar de nuevo"}
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }
@@ -2791,480 +3249,6 @@ export default function LoginButton() {
 }
 </file>
 
-<file path="lib/firebase.ts">
-// lib/firebase.ts
-import { initializeApp, getApps, getApp } from "firebase/app"
-import {
-    getAuth,
-    GoogleAuthProvider,
-    setPersistence,
-    browserLocalPersistence,
-} from "firebase/auth"
-import { getFirestore } from "firebase/firestore"
-
-const firebaseConfig = {
-    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
-    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN!,
-    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID!,
-    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET!,
-    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID!,
-    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID!,
-}
-
-// Evita re-crear la app en HMR
-export const app = getApps().length ? getApp() : initializeApp(firebaseConfig)
-
-// Auth + proveedor Google
-export const auth = getAuth(app)
-export const googleProvider = new GoogleAuthProvider()
-export const db = getFirestore(app)
-googleProvider.setCustomParameters({ prompt: "select_account" })
-
-// Persistencia en el navegador
-setPersistence(auth, browserLocalPersistence).catch(() => {
-    // Silencia errores de persistencia (p.ej., privacidad del navegador)
-})
-</file>
-
-<file path="package.json">
-{
-  "name": "nu9ve-v5",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
-  },
-  "dependencies": {
-    "@radix-ui/react-progress": "^1.1.7",
-    "@radix-ui/react-slot": "^1.2.3",
-    "@vercel/analytics": "^1.5.0",
-    "canvas-confetti": "^1.9.3",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "firebase": "^12.2.1",
-    "geist": "^1.4.2",
-    "lucide-react": "^0.542.0",
-    "next": "^15.2.4",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1",
-    "tailwind-merge": "^3.3.1"
-  },
-  "devDependencies": {
-    "@eslint/eslintrc": "^3",
-    "@tailwindcss/postcss": "^4",
-    "@types/canvas-confetti": "^1.9.0",
-    "@types/node": "^20.19.13",
-    "@types/react": "^19.1.12",
-    "@types/react-dom": "^19",
-    "@types/react-icons": "^2.2.7",
-    "eslint": "^9.35.0",
-    "eslint-config-next": "^15.2.4",
-    "tailwindcss": "^4.1.12",
-    "tw-animate-css": "^1.3.8",
-    "typescript": "^5.9.2"
-  }
-}
-</file>
-
-<file path="tsconfig.json">
-{
-  "compilerOptions": {
-     "baseUrl": ".",
-    "target": "ES2017",
-    "lib": ["dom", "dom.iterable", "esnext"],
-    "allowJs": true,
-    "skipLibCheck": true,
-    "strict": true,
-    "noEmit": true,
-    "esModuleInterop": true,
-    "module": "esnext",
-    "moduleResolution": "bundler",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "jsx": "preserve",
-    "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
-    "paths": {
-      "@/*": ["./*"] 
-    }
-  },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
-}
-</file>
-
-<file path="components/AssessmentEngine.tsx">
-"use client"
-
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
-import { Heart, Lightbulb, Award, Star } from "lucide-react"
-
-interface AssessmentItem {
-  id: string
-  question: string
-  options: {
-    text: string
-    correct: boolean
-    points: number
-  }[]
-  feedback: {
-    correct: string
-    incorrect: string
-  }
-  hint?: string
-}
-
-interface AssessmentLevel {
-  id: string
-  title: string
-  type: "roleplay" | "quiz" | "story" | "interactive"
-  hasContinuity: boolean
-  items: AssessmentItem[]
-  background?: string
-  story?: string
-}
-
-interface AssessmentEngineProps {
-  level: AssessmentLevel
-  userData: any
-  onComplete: (result: AssessmentResult) => void
-  onBack: () => void
-  onLoseLife: () => void
-}
-
-interface AssessmentResult {
-  score: number
-  mistakes: number
-  firstTryCorrect: number
-  medal: "platinum" | "gold" | "silver"
-  timeMs: number
-}
-
-export default function AssessmentEngine({ level, userData, onComplete, onBack, onLoseLife }: AssessmentEngineProps) {
-  const [currentIndex, setCurrentIndex] = useState(0)
-  const [selectedOption, setSelectedOption] = useState<number | null>(null)
-  const [showFeedback, setShowFeedback] = useState(false)
-  const [score, setScore] = useState(0)
-  const [mistakes, setMistakes] = useState(0)
-  const [firstTryCorrect, setFirstTryCorrect] = useState(0)
-  const [retryQueue, setRetryQueue] = useState<AssessmentItem[]>([])
-  const [isRetryRound, setIsRetryRound] = useState(false)
-  const [hintUsed, setHintUsed] = useState(false)
-  const [startTime] = useState(Date.now())
-  const [attemptedItems, setAttemptedItems] = useState<Set<string>>(new Set())
-  const [shuffledItems, setShuffledItems] = useState<AssessmentItem[]>([])
-  const isRoleplay = level.type === "roleplay"
-
-  const petDataMap: Record<"baby-capybara" | "adult-capybara" | "golden-capybara" | "ninja-capybara", { icon: string; name: string }> = {
-    "baby-capybara": { icon: "🐹", name: "Capi Bebé" },
-    "adult-capybara": { icon: "🦫", name: "Capi Adulto" },
-    "golden-capybara": { icon: "✨🦫", name: "Capi Dorado" },
-    "ninja-capybara": { icon: "🥷🦫", name: "Capi Ninja" },
-  }
-  const petData = petDataMap[userData.currentPet as keyof typeof petDataMap] || { icon: "🐹", name: "Capi Bebé" }
-
-  // Initialize shuffled items for quiz levels
-  useEffect(() => {
-    if (!level.hasContinuity) {
-      // Shuffle items with stable seed for resume capability
-      const shuffled = [...level.items].sort(() => Math.random() - 0.5)
-      setShuffledItems(shuffled)
-    } else {
-      setShuffledItems(level.items)
-    }
-  }, [level])
-
-  const currentItems = isRetryRound ? retryQueue : shuffledItems
-  const currentItem = currentItems[currentIndex]
-
-  const calculateMedal = (mistakeCount: number): "platinum" | "gold" | "silver" => {
-    if (mistakeCount === 0) return "platinum"
-    if (mistakeCount <= 2) return "gold"
-    return "silver"
-  }
-
-  const handleOptionSelect = (optionIndex: number) => {
-  setSelectedOption(optionIndex)
-  const option = currentItem.options[optionIndex]
-  const isFirstTry = !attemptedItems.has(currentItem.id)
-
-  if (option.correct) {
-    const points = isFirstTry ? option.points + 25 : option.points
-    setScore((prev) => prev + points)
-    if (isFirstTry) setFirstTryCorrect((prev) => prev + 1)
-    if (isRetryRound) {
-      // Saca del retryQueue si era de revisión
-      setRetryQueue((prev) => prev.filter((item) => item.id !== currentItem.id))
-    }
-  } else {
-    setMistakes((prev) => prev + 1)
-    setScore((prev) => prev - 50)
-    onLoseLife()
-    setAttemptedItems((prev) => new Set(prev).add(currentItem.id))
-
-    // SOLO los quizzes se revisan al final
-    if (!isRoleplay && !isRetryRound) {
-      setRetryQueue((prev) => prev.find((i) => i.id === currentItem.id) ? prev : [...prev, currentItem])
-    }
-  }
-
-  setShowFeedback(true)
-}
-
-// Reemplaza handleNext:
-const handleNext = () => {
-  const option = currentItem.options[selectedOption!]
-
-  if (isRoleplay) {
-    // Roleplay: reintento inmediato hasta acertar
-    if (option.correct) {
-      if (currentIndex < currentItems.length - 1) {
-        setCurrentIndex((prev) => prev + 1)
-        resetForNextItem()
-      } else {
-        completeAssessment()
-      }
-    } else {
-      // Reintentar esta misma
-      resetForNextItem()
-    }
-    return
-  }
-
-  // Quiz:
-  if (!isRetryRound) {
-    // Primera pasada: AVANZAR SIEMPRE, haya sido correcto o no
-    if (currentIndex < currentItems.length - 1) {
-      setCurrentIndex((prev) => prev + 1)
-      resetForNextItem()
-    } else {
-      // Primera pasada terminada → ver si hay revisión
-      if (retryQueue.length > 0) {
-        setIsRetryRound(true)
-        setCurrentIndex(0)
-        resetForNextItem()
-      } else {
-        completeAssessment()
-      }
-    }
-  } else {
-    // En revisión: quedarse hasta acertar
-    if (option.correct) {
-      if (retryQueue.filter((item) => item.id !== currentItem.id).length === 0) {
-        completeAssessment()
-      } else {
-        setCurrentIndex(0) // volvemos al inicio de la cola que queda
-        resetForNextItem()
-      }
-    } else {
-      // Reintentar esta misma
-      resetForNextItem()
-    }
-  }
-}
-
-  const resetForNextItem = () => {
-    setSelectedOption(null)
-    setShowFeedback(false)
-    setHintUsed(false)
-  }
-
-  const completeAssessment = () => {
-    const timeMs = Date.now() - startTime
-    const medal = calculateMedal(mistakes)
-
-    const result: AssessmentResult = {
-      score,
-      mistakes,
-      firstTryCorrect,
-      medal,
-      timeMs,
-    }
-
-    onComplete(result)
-  }
-
-  const showHint = () => {
-    if (!hintUsed && currentItem.hint) {
-      setHintUsed(true)
-    }
-  }
-
-  const getMedalIcon = (medal: string) => {
-    switch (medal) {
-      case "platinum":
-        return <Award className="w-5 h-5 text-blue-500" />
-      case "gold":
-        return <Award className="w-5 h-5 text-yellow-500" />
-      case "silver":
-        return <Award className="w-5 h-5 text-gray-400" />
-      default:
-        return <Star className="w-5 h-5 text-gray-300" />
-    }
-  }
-
-  if (!currentItem) {
-    return (
-      <div className="max-w-4xl mx-auto p-6 text-center">
-        <h2 className="text-2xl font-bold mb-4">Cargando...</h2>
-      </div>
-    )
-  }
-
-  return (
-    <div className="max-w-4xl mx-auto">
-      <div className="flex items-center gap-4 mb-6">
-        <Button variant="outline" onClick={onBack} className="border-amber-300 text-amber-700 bg-transparent">
-          ← Volver al curso
-        </Button>
-        <h1 className="text-2xl font-bold text-amber-800">{level.title}</h1>
-        <div className="text-3xl animate-bounce">{petData.icon}</div>
-        <div className="flex items-center gap-4 ml-auto">
-          <div className="flex items-center gap-2">
-            <Heart className="w-5 h-5 text-red-500" />
-            <span className="font-bold text-red-600">
-              {userData.lives}/{userData.maxLives}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            {getMedalIcon(calculateMedal(mistakes))}
-            <span className="text-sm text-gray-600">
-              {mistakes === 0 ? "Platino" : mistakes <= 2 ? "Oro" : "Plata"}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <Card className="relative overflow-hidden border-2 border-amber-300">
-        {level.background && (
-          <div
-            className="absolute inset-0 opacity-20"
-            style={{
-              backgroundImage: `url('${level.background}')`,
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-            }}
-          />
-        )}
-
-        <CardContent className="p-8 relative z-10">
-          <div className="mb-2 flex items-center justify-between">
-  <span className="text-sm font-medium text-amber-800">Progreso</span>
-  <span className="text-xs text-amber-700">
-    {isRetryRound && level.type === "quiz"
-      ? "Corrigiendo errores"
-      : `${currentIndex + 1} / ${currentItems.length}`}
-  </span>
-</div>
-
-<Progress
-  className="h-2"
-  value={
-    isRetryRound && level.type === "quiz"
-      ? 100
-      : Math.round(((currentIndex + 1) / Math.max(1, currentItems.length)) * 100)
-  }
-/>
-          {currentIndex === 0 && level.story && !isRetryRound && (
-            <div className="mb-6 p-4 bg-amber-50 rounded-lg border border-amber-200">
-              <p className="text-amber-800">{level.story}</p>
-            </div>
-          )}
-
-          <div className="mb-6 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="text-4xl">{petData.icon}</div>
-              <div>
-                <p className="text-sm text-amber-600">{petData.name} está aquí para ayudarte</p>
-                {hintUsed && currentItem.hint && (
-                  <div className="mt-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                    <p className="text-blue-800 text-sm">💡 {currentItem.hint}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-            {currentItem.hint && (
-              <Button
-                onClick={showHint}
-                disabled={hintUsed}
-                variant="outline"
-                size="sm"
-                className="border-blue-300 text-blue-700 bg-transparent"
-              >
-                <Lightbulb className="w-4 h-4 mr-2" />
-                {hintUsed ? "Pista usada" : "Pedir pista"}
-              </Button>
-            )}
-          </div>
-
-          <div className="mb-6">
-            <h3 className="text-xl font-semibold mb-4 text-amber-800">{currentItem.question}</h3>
-            <div className="space-y-3">
-              {currentItem.options.map((option, index) => (
-                <Button
-                  key={index}
-                  onClick={() => handleOptionSelect(index)}
-                  disabled={showFeedback}
-                  variant={selectedOption === index ? "default" : "outline"}
-                  className={`w-full text-left justify-start p-4 h-auto ${
-                    selectedOption === index
-                      ? option.correct
-                        ? "bg-green-500 hover:bg-green-600 text-white border-green-600"
-                        : "bg-red-500 hover:bg-red-600 text-white border-red-600"
-                      : "border-amber-300 text-amber-700 hover:bg-amber-50"
-                  }`}
-                >
-                  {option.text}
-                </Button>
-              ))}
-            </div>
-          </div>
-
-          {showFeedback && (
-            <div
-              className={`mb-6 p-4 rounded-lg border ${
-                currentItem.options[selectedOption!].correct
-                  ? "bg-green-50 border-green-200"
-                  : "bg-red-50 border-red-200"
-              }`}
-            >
-              <p
-                className={`font-medium ${
-                  currentItem.options[selectedOption!].correct ? "text-green-800" : "text-red-800"
-                }`}
-              >
-                {currentItem.options[selectedOption!].correct
-                  ? currentItem.feedback.correct
-                  : currentItem.feedback.incorrect}
-              </p>
-              <Button onClick={handleNext} className="mt-4 bg-amber-500 hover:bg-amber-600 text-white">
-                {selectedOption != null && currentItem.options[selectedOption].correct
-              
-                  ? (isRetryRound && retryQueue.filter((item) => item.id !== currentItem.id).length === 0) ||
-                    (!isRetryRound && currentIndex === currentItems.length - 1 && retryQueue.length === 0)
-                    ? "Completar nivel"
-                    : "Siguiente"
-                  : "Intentar de nuevo"}
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
-</file>
-
 <file path="components/QuizLevel.tsx">
 "use client"
 
@@ -3274,6 +3258,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Star, ArrowLeft, Brain, Target } from "lucide-react"
+import { levelBackgrounds } from "@/lib/levelBackgrounds"
 
 interface QuizQuestion {
   id: number
@@ -3287,8 +3272,13 @@ interface QuizQuestion {
 
 interface QuizLevelProps {
   levelId: number
-  onComplete: (score: number, badges: string[]) => void
-  onExit: () => void
+  world: "selva" | "montana" | "rio" | "mercado" | "ciudad"
+  xpReward: number
+  coinReward: number
+  onComplete: (xp: number, coins: number) => void
+  onBack: () => void
+  userData: UserData
+  onLoseLife: () => void
 }
 
 const quizQuestions: QuizQuestion[] = [
@@ -3379,7 +3369,7 @@ const quizQuestions: QuizQuestion[] = [
   },
 ]
 
-export default function QuizLevel({ levelId, onComplete, onExit }: QuizLevelProps) {
+export default function QuizLevel({ levelId, world, onComplete, onBack }: QuizLevelProps) {
   const [currentQuestion, setCurrentQuestion] = useState(0)
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null)
   const [showResult, setShowResult] = useState(false)
@@ -3387,90 +3377,83 @@ export default function QuizLevel({ levelId, onComplete, onExit }: QuizLevelProp
   const [correctAnswers, setCorrectAnswers] = useState(0)
   const [answers, setAnswers] = useState<number[]>([])
   const [retryQueue, setRetryQueue] = useState<number[]>([])
-const [isRetryRound, setIsRetryRound] = useState(false)
-const [wrongQueue, setWrongQueue] = useState<number[]>([])
-const [mode, setMode] = useState<"first" | "review">("first")
-const [reviewPos, setReviewPos] = useState(0)
+  const [wrongQueue, setWrongQueue] = useState<number[]>([])
+  const [mode, setMode] = useState<"first" | "review">("first")
+  const [reviewPos, setReviewPos] = useState(0)
+
+  const backgroundImage = levelBackgrounds[world] || levelBackgrounds["selva"]
 
   const getIndex = () => (mode === "first" ? currentQuestion : wrongQueue[reviewPos])
-const question = quizQuestions[getIndex()]
-const isLastInFirstPass = currentQuestion === quizQuestions.length - 1
-const isLastQuestion =
-  mode === "first"
-    ? currentQuestion === quizQuestions.length - 1
-    : reviewPos === wrongQueue.length - 1
-  
+  const question = quizQuestions[getIndex()]
+  const isLastInFirstPass = currentQuestion === quizQuestions.length - 1
+  const isLastQuestion =
+    mode === "first"
+      ? currentQuestion === quizQuestions.length - 1
+      : reviewPos === wrongQueue.length - 1
+
   const handleAnswerSelect = (answerIndex: number) => {
-  setSelectedAnswer(answerIndex)
-}
-
-const handleNextQuestion = () => {
-  if (selectedAnswer === null) return
-
-    const isCorrect = selectedAnswer === question.correctAnswer
-
-
- // sumatoria y conteo se mantienen como ya los tenías
-  if (isCorrect) {
-    setScore((s) => s + question.points)
-    setCorrectAnswers((c) => c + 1)
-  } else if (mode === "first") {
-    // Agendar para revisión solo en primera pasada
-    setWrongQueue((prev) => (prev.includes(getIndex()) ? prev : [...prev, getIndex()]))
+    setSelectedAnswer(answerIndex)
   }
 
-  setShowResult(true)
+  const handleNextQuestion = () => {
+    if (selectedAnswer === null) return
+    const isCorrect = selectedAnswer === question.correctAnswer
 
-  setTimeout(() => {
-    if (mode === "first") {
-      if (isLastInFirstPass) {
-        if (wrongQueue.length > 0 || !isCorrect) {
-          // Si hay falladas, pasamos a review
-          const finalQueue = isCorrect ? wrongQueue : [...wrongQueue, getIndex()]
-          setWrongQueue(Array.from(new Set(finalQueue)))
-          setMode("review")
-          setReviewPos(0)
-          setSelectedAnswer(null)
-          setShowResult(false)
-        } else {
-          // Perfecto sin fallos → completar
-          const finalScore = isCorrect ? score + question.points : score
-          const badges: string[] = []
-          if (correctAnswers + (isCorrect ? 1 : 0) === quizQuestions.length) badges.push("Perfeccionista")
-          if (finalScore >= 120) badges.push("Experto en Comunicación")
-          if (correctAnswers + (isCorrect ? 1 : 0) >= 5) badges.push("Conocedor")
-          onComplete(finalScore, badges)
-        }
-      } else {
-        // primera pasada sigue
-        setCurrentQuestion((q) => q + 1)
-        setSelectedAnswer(null)
-        setShowResult(false)
-      }
-    } else {
-      // REVIEW: quedarse hasta acertar
-      if (isCorrect) {
-        if (reviewPos < wrongQueue.length - 1) {
-          setReviewPos((p) => p + 1)
-          setSelectedAnswer(null)
-          setShowResult(false)
-        } else {
-          // fin del repaso
-          const finalScore = score + question.points // si acertó sumó
-          const badges: string[] = []
-          if (correctAnswers + 1 === quizQuestions.length) badges.push("Perfeccionista")
-          if (finalScore >= 120) badges.push("Experto en Comunicación")
-          if (correctAnswers + 1 >= 5) badges.push("Conocedor")
-          onComplete(finalScore, badges)
-        }
-      } else {
-        // sigue en la misma hasta acertar
-        setSelectedAnswer(null)
-        setShowResult(false)
-      }
+    if (isCorrect) {
+      setScore((s) => s + question.points)
+      setCorrectAnswers((c) => c + 1)
+    } else if (mode === "first") {
+      setWrongQueue((prev) => (prev.includes(getIndex()) ? prev : [...prev, getIndex()]))
     }
-  }, 1200) // puedes dejar 3000 si prefieres
-}
+
+    setShowResult(true)
+
+    setTimeout(() => {
+      if (mode === "first") {
+        if (isLastInFirstPass) {
+          if (wrongQueue.length > 0 || !isCorrect) {
+            const finalQueue = isCorrect ? wrongQueue : [...wrongQueue, getIndex()]
+            setWrongQueue(Array.from(new Set(finalQueue)))
+            setMode("review")
+            setReviewPos(0)
+            setSelectedAnswer(null)
+            setShowResult(false)
+          } else {
+            const finalScore = isCorrect ? score + question.points : score
+            const badges: string[] = []
+            if (correctAnswers + (isCorrect ? 1 : 0) === quizQuestions.length) badges.push("Perfeccionista")
+            if (finalScore >= 120) badges.push("Experto en Comunicación")
+            if (correctAnswers + (isCorrect ? 1 : 0) >= 5) badges.push("Conocedor")
+            onComplete(props.xpReward, props.coinReward)
+
+          }
+        } else {
+          setCurrentQuestion((q) => q + 1)
+          setSelectedAnswer(null)
+          setShowResult(false)
+        }
+      } else {
+        if (isCorrect) {
+          if (reviewPos < wrongQueue.length - 1) {
+            setReviewPos((p) => p + 1)
+            setSelectedAnswer(null)
+            setShowResult(false)
+          } else {
+            const finalScore = score + question.points
+            const badges: string[] = []
+            if (correctAnswers + 1 === quizQuestions.length) badges.push("Perfeccionista")
+            if (finalScore >= 120) badges.push("Experto en Comunicación")
+            if (correctAnswers + 1 >= 5) badges.push("Conocedor")
+            onComplete(props.xpReward, props.coinReward)
+
+          }
+        } else {
+          setSelectedAnswer(null)
+          setShowResult(false)
+        }
+      }
+    }, 1200)
+  }
 
   const getScorePercentage = () => {
     const maxScore = quizQuestions.reduce((sum, q) => sum + q.points, 0)
@@ -3480,49 +3463,60 @@ const handleNextQuestion = () => {
   if (showResult) {
     const isCorrect = selectedAnswer === question.correctAnswer
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 p-4 flex items-center justify-center">
-        <Card className="max-w-2xl w-full animate-bounce-in">
-          <CardContent className="p-8 text-center">
-            <div className="text-6xl mb-4">{isCorrect ? "✅" : "❌"}</div>
-            <h3 className="text-2xl font-bold mb-4">{isCorrect ? "¡Correcto!" : "Incorrecto"}</h3>
+      <div
+        className="min-h-screen bg-cover bg-center bg-no-repeat flex items-center justify-center"
+        style={{ backgroundImage: `url(${backgroundImage})` }}
+      >
+        <div className="absolute inset-0 bg-black/30"></div>
+        <div className="relative z-10 w-full max-w-2xl p-4">
+          <Card className="w-full animate-bounce-in">
+            <CardContent className="p-8 text-center">
+              <div className="text-6xl mb-4">{isCorrect ? "✅" : "❌"}</div>
+              <h3 className="text-2xl font-bold mb-4">{isCorrect ? "¡Correcto!" : "Incorrecto"}</h3>
 
-            {isCorrect && (
-              <div className="bg-green-100 rounded-lg p-4 mb-4">
-                <p className="text-lg font-semibold text-green-700 mb-2">+{question.points} puntos</p>
-                <Badge className="bg-green-500">{question.category}</Badge>
-              </div>
-            )}
-
-            <div className="bg-muted/50 rounded-lg p-4 mb-4 text-left">
-              <p className="font-semibold mb-2">Explicación:</p>
-              <p className="text-muted-foreground">{question.explanation}</p>
-              {!isCorrect && (
-                <p className="text-sm text-primary mt-2">
-                  Respuesta correcta: {question.options[question.correctAnswer]}
-                </p>
+              {isCorrect && (
+                <div className="bg-green-100 rounded-lg p-4 mb-4">
+                  <p className="text-lg font-semibold text-green-700 mb-2">+{question.points} puntos</p>
+                  <Badge className="bg-green-500">{question.category}</Badge>
+                </div>
               )}
-            </div>
 
-            <div className="flex items-center justify-center gap-2">
-              <Star className="w-5 h-5 text-yellow-500" />
-              <span className="font-bold">
-                Puntuación: {score} ({getScorePercentage()}%)
-              </span>
-            </div>
-          </CardContent>
-        </Card>
+              <div className="bg-muted/50 rounded-lg p-4 mb-4 text-left">
+                <p className="font-semibold mb-2">Explicación:</p>
+                <p className="text-muted-foreground">{question.explanation}</p>
+                {!isCorrect && (
+                  <p className="text-sm text-primary mt-2">
+                    Respuesta correcta: {question.options[question.correctAnswer]}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-center justify-center gap-2">
+                <Star className="w-5 h-5 text-yellow-500" />
+                <span className="font-bold">
+                  Puntuación: {score} ({getScorePercentage()}%)
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-cyan-50 p-4">
-      <div className="max-w-4xl mx-auto space-y-6">
+    <div
+      className="min-h-screen bg-cover bg-center bg-no-repeat relative"
+      style={{ backgroundImage: `url(${backgroundImage})` }}
+    >
+      <div className="absolute inset-0 bg-black/30"></div>
+
+      <div className="relative z-10 max-w-4xl mx-auto py-8 space-y-6">
         {/* Header */}
         <Card className="bg-gradient-to-r from-indigo-500 to-cyan-500 text-white border-0">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <Button variant="ghost" onClick={onExit} className="text-white hover:bg-white/20">
+              <Button variant="ghost" onClick={onBack} className="text-white hover:bg-white/20">
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Salir
               </Button>
@@ -3552,7 +3546,7 @@ const handleNextQuestion = () => {
               <Badge variant="outline">{question.category}</Badge>
               <Badge variant="secondary">{question.points} pts</Badge>
             </div>
-            <CardTitle className="text-xl text-balance leading-relaxed">{question.question}</CardTitle>
+            <CardTitle className="text-xl leading-relaxed">{question.question}</CardTitle>
           </CardHeader>
           <CardContent className="p-6">
             <div className="space-y-3 mb-8">
@@ -3577,7 +3571,7 @@ const handleNextQuestion = () => {
                     >
                       {String.fromCharCode(65 + index)}
                     </div>
-                    <span className="text-pretty leading-relaxed">{option}</span>
+                    <span>{option}</span>
                   </div>
                 </Button>
               ))}
@@ -3603,7 +3597,9 @@ const handleNextQuestion = () => {
           <CardContent className="p-4">
             <div className="flex items-center justify-between text-sm">
               <span>Progreso del Quiz</span>
-              <span className="font-semibold">{Math.round(((currentQuestion + 1) / quizQuestions.length) * 100)}%</span>
+              <span className="font-semibold">
+                {Math.round(((currentQuestion + 1) / quizQuestions.length) * 100)}%
+              </span>
             </div>
             <Progress value={((currentQuestion + 1) / quizQuestions.length) * 100} className="mt-2" />
           </CardContent>
@@ -3614,8 +3610,52 @@ const handleNextQuestion = () => {
 }
 </file>
 
+<file path="package.json">
+{
+  "name": "nu9ve-v5",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@radix-ui/react-progress": "^1.1.7",
+    "@radix-ui/react-slot": "^1.2.3",
+    "@vercel/analytics": "^1.5.0",
+    "canvas-confetti": "^1.9.3",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "firebase": "^12.2.1",
+    "geist": "^1.4.2",
+    "lucide-react": "^0.542.0",
+    "next": "^15.2.4",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "tailwind-merge": "^3.3.1"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/canvas-confetti": "^1.9.0",
+    "@types/node": "^20.19.13",
+    "@types/react": "^19.1.12",
+    "@types/react-dom": "^19",
+    "@types/react-icons": "^2.2.7",
+    "eslint": "^9.35.0",
+    "eslint-config-next": "^15.2.4",
+    "tailwindcss": "^4.1.12",
+    "tw-animate-css": "^1.3.8",
+    "typescript": "^5.9.2"
+  }
+}
+</file>
+
 <file path="app/page.tsx">
 "use client"
+import CourseList from "@/components/CourseList"
 import { UserData, pets, Pet } from "@/lib/userTypes"
 import LevelComponent from "@/components/LevelComponent"
 import RoleplayLevel from "@/components/RoleplayLevel"
@@ -3627,7 +3667,7 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import LoginButton from "@/components/LoginButton"
 import Dashboard from "@/components/Dashboard"
-
+import { Level } from "@/lib/userTypes"
 
 
 import {
@@ -3667,16 +3707,7 @@ interface Course {
   completedLevels: number
 }
 
-interface Level {
-  id: number
-  title: string
-  type: "roleplay" | "quiz" | "story" | "video" | "interactive"
-  duration: number
-  xpReward: number
-  coinReward: number
-  isCompleted: boolean
-  isUnlocked: boolean
-}
+
 
 const initialUserData: UserData = {
   level: 1,
@@ -3755,6 +3786,7 @@ const communicationLevels: Level[] = [
     coinReward: 20,
     isCompleted: false,
     isUnlocked: true,
+    world: "selva",
   },
   {
     id: 2,
@@ -3765,6 +3797,7 @@ const communicationLevels: Level[] = [
     coinReward: 15,
     isCompleted: false,
     isUnlocked: true,
+    world: "montana",
   },
   {
     id: 3,
@@ -3775,6 +3808,7 @@ const communicationLevels: Level[] = [
     coinReward: 25,
     isCompleted: false,
     isUnlocked: true,
+    world: "mercado",
   },
   {
     id: 4,
@@ -3785,6 +3819,7 @@ const communicationLevels: Level[] = [
     coinReward: 30,
     isCompleted: false,
     isUnlocked: false,
+    world: "ciudad",
   },
   {
     id: 5,
@@ -3795,6 +3830,7 @@ const communicationLevels: Level[] = [
     coinReward: 40,
     isCompleted: false,
     isUnlocked: false,
+    world: "rio",
   },
 ]
 
@@ -4492,18 +4528,26 @@ export default function Nu9veAcademy() {
 
           <main className="min-h-screen w-full">
             {currentView === "dashboard" && renderDashboard()}
-            {currentView === "course" && renderCourse()}
+            {currentView === "course" && (
+  <CourseList
+    levels={communicationLevels}
+    userData={userData}
+    onBack={() => setCurrentView("dashboard")}
+    onStartLevel={(id) => startLevel(id)}
+  />
+)}
             {currentView === "shop" && renderShop()}
             {currentView === "profile" && renderProfile()}
             {currentView === "level" && currentLevel && (
-              <LevelComponent
-                levelId={currentLevel}
-                onComplete={(xp, coins) => completeLevel(currentLevel, xp, coins)}
-                onBack={() => setCurrentView("course")}
-                userData={userData}
-                onLoseLife={loseLife}
-              />
-            )}
+ <LevelComponent
+  level={communicationLevels[currentLevel - 1]}   // ✅ no levelId
+  onComplete={(score, badges) => completeLevel(currentLevel, score, badges)}
+  onBack={() => setCurrentView("course")}
+  userData={userData}
+  onLoseLife={loseLife}
+/>
+)}
+
           </main>
         </div>
       )}

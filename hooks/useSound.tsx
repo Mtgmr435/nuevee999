@@ -1,13 +1,12 @@
-// hooks/useSound.tsx
-"use client"
+// hooks/useSound.ts
 import { useCallback } from "react"
 
-export default function useSound(path: string, volume: number = 0.6) {
+export default function useSound(url: string, volume: number = 0.5) {
   const play = useCallback(() => {
-    const audio = new Audio(path)
+    const audio = new Audio(url)
     audio.volume = volume
     audio.play().catch(() => {})
-  }, [path, volume])
+  }, [url, volume])
 
   return play
 }

@@ -40,22 +40,28 @@ function Button({
   variant,
   size,
   asChild = false,
+  onClick,
+  disableClickSound = false, // 👈 nuevo prop opcional
   ...props
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean
+    disableClickSound?: boolean
   }) {
   const Comp = asChild ? Slot : "button"
   const playClick = useSound("/sounds/click.mp3")
+
   return (
     <Comp
       data-slot="button"
       className={cn(buttonVariants({ variant, size, className }))}
-     onClick={(e: any) => {
-       playClick()
+      onClick={(e: any) => {
+        if (!disableClickSound) {
+          playClick()
+        }
         if (onClick) {
-          onClick(e) // mantiene la lógica original del botón
-          }
+          onClick(e)
+        }
       }}
       {...props}
     />
@@ -63,3 +69,4 @@ function Button({
 }
 
 export { Button, buttonVariants }
+

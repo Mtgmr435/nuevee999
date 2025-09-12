@@ -1,4 +1,5 @@
 "use client"
+import CourseList from "@/components/CourseList"
 import { UserData, pets, Pet } from "@/lib/userTypes"
 import LevelComponent from "@/components/LevelComponent"
 import RoleplayLevel from "@/components/RoleplayLevel"
@@ -10,7 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import LoginButton from "@/components/LoginButton"
 import Dashboard from "@/components/Dashboard"
-
+import { Level } from "@/lib/userTypes"
 
 
 import {
@@ -50,16 +51,7 @@ interface Course {
   completedLevels: number
 }
 
-interface Level {
-  id: number
-  title: string
-  type: "roleplay" | "quiz" | "story" | "video" | "interactive"
-  duration: number
-  xpReward: number
-  coinReward: number
-  isCompleted: boolean
-  isUnlocked: boolean
-}
+
 
 const initialUserData: UserData = {
   level: 1,
@@ -138,6 +130,7 @@ const communicationLevels: Level[] = [
     coinReward: 20,
     isCompleted: false,
     isUnlocked: true,
+    world: "selva",
   },
   {
     id: 2,
@@ -148,6 +141,7 @@ const communicationLevels: Level[] = [
     coinReward: 15,
     isCompleted: false,
     isUnlocked: true,
+    world: "montana",
   },
   {
     id: 3,
@@ -158,6 +152,7 @@ const communicationLevels: Level[] = [
     coinReward: 25,
     isCompleted: false,
     isUnlocked: true,
+    world: "mercado",
   },
   {
     id: 4,
@@ -168,6 +163,7 @@ const communicationLevels: Level[] = [
     coinReward: 30,
     isCompleted: false,
     isUnlocked: false,
+    world: "ciudad",
   },
   {
     id: 5,
@@ -178,6 +174,7 @@ const communicationLevels: Level[] = [
     coinReward: 40,
     isCompleted: false,
     isUnlocked: false,
+    world: "rio",
   },
 ]
 
@@ -875,18 +872,26 @@ export default function Nu9veAcademy() {
 
           <main className="min-h-screen w-full">
             {currentView === "dashboard" && renderDashboard()}
-            {currentView === "course" && renderCourse()}
+            {currentView === "course" && (
+  <CourseList
+    levels={communicationLevels}
+    userData={userData}
+    onBack={() => setCurrentView("dashboard")}
+    onStartLevel={(id) => startLevel(id)}
+  />
+)}
             {currentView === "shop" && renderShop()}
             {currentView === "profile" && renderProfile()}
             {currentView === "level" && currentLevel && (
-              <LevelComponent
-                levelId={currentLevel}
-                onComplete={(xp, coins) => completeLevel(currentLevel, xp, coins)}
-                onBack={() => setCurrentView("course")}
-                userData={userData}
-                onLoseLife={loseLife}
-              />
-            )}
+ <LevelComponent
+  level={communicationLevels[currentLevel - 1]}   // ✅ no levelId
+  onComplete={(score, badges) => completeLevel(currentLevel, score, badges)}
+  onBack={() => setCurrentView("course")}
+  userData={userData}
+  onLoseLife={loseLife}
+/>
+)}
+
           </main>
         </div>
       )}

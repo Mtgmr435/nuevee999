@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Star, ArrowLeft, Brain, Target } from "lucide-react"
+import { levelBackgrounds } from "@/lib/levelBackgrounds"
 
 interface QuizQuestion {
   id: number
@@ -19,8 +20,13 @@ interface QuizQuestion {
 
 interface QuizLevelProps {
   levelId: number
-  onComplete: (score: number, badges: string[]) => void
-  onExit: () => void
+  world: "selva" | "montana" | "rio" | "mercado" | "ciudad"
+  xpReward: number
+  coinReward: number
+  onComplete: (xp: number, coins: number) => void
+  onBack: () => void
+  userData: UserData
+  onLoseLife: () => void
 }
 
 const quizQuestions: QuizQuestion[] = [
@@ -111,7 +117,7 @@ const quizQuestions: QuizQuestion[] = [
   },
 ]
 
-export default function QuizLevel({ levelId, onComplete, onExit }: QuizLevelProps) {
+export default function QuizLevel({ levelId, world, onComplete, onBack }: QuizLevelProps) {
   const [currentQuestion, setCurrentQuestion] = useState(0)
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null)
   const [showResult, setShowResult] = useState(false)
@@ -119,90 +125,83 @@ export default function QuizLevel({ levelId, onComplete, onExit }: QuizLevelProp
   const [correctAnswers, setCorrectAnswers] = useState(0)
   const [answers, setAnswers] = useState<number[]>([])
   const [retryQueue, setRetryQueue] = useState<number[]>([])
-const [isRetryRound, setIsRetryRound] = useState(false)
-const [wrongQueue, setWrongQueue] = useState<number[]>([])
-const [mode, setMode] = useState<"first" | "review">("first")
-const [reviewPos, setReviewPos] = useState(0)
+  const [wrongQueue, setWrongQueue] = useState<number[]>([])
+  const [mode, setMode] = useState<"first" | "review">("first")
+  const [reviewPos, setReviewPos] = useState(0)
+
+  const backgroundImage = levelBackgrounds[world] || levelBackgrounds["selva"]
 
   const getIndex = () => (mode === "first" ? currentQuestion : wrongQueue[reviewPos])
-const question = quizQuestions[getIndex()]
-const isLastInFirstPass = currentQuestion === quizQuestions.length - 1
-const isLastQuestion =
-  mode === "first"
-    ? currentQuestion === quizQuestions.length - 1
-    : reviewPos === wrongQueue.length - 1
-  
+  const question = quizQuestions[getIndex()]
+  const isLastInFirstPass = currentQuestion === quizQuestions.length - 1
+  const isLastQuestion =
+    mode === "first"
+      ? currentQuestion === quizQuestions.length - 1
+      : reviewPos === wrongQueue.length - 1
+
   const handleAnswerSelect = (answerIndex: number) => {
-  setSelectedAnswer(answerIndex)
-}
-
-const handleNextQuestion = () => {
-  if (selectedAnswer === null) return
-
-    const isCorrect = selectedAnswer === question.correctAnswer
-
-
- // sumatoria y conteo se mantienen como ya los tenías
-  if (isCorrect) {
-    setScore((s) => s + question.points)
-    setCorrectAnswers((c) => c + 1)
-  } else if (mode === "first") {
-    // Agendar para revisión solo en primera pasada
-    setWrongQueue((prev) => (prev.includes(getIndex()) ? prev : [...prev, getIndex()]))
+    setSelectedAnswer(answerIndex)
   }
 
-  setShowResult(true)
+  const handleNextQuestion = () => {
+    if (selectedAnswer === null) return
+    const isCorrect = selectedAnswer === question.correctAnswer
 
-  setTimeout(() => {
-    if (mode === "first") {
-      if (isLastInFirstPass) {
-        if (wrongQueue.length > 0 || !isCorrect) {
-          // Si hay falladas, pasamos a review
-          const finalQueue = isCorrect ? wrongQueue : [...wrongQueue, getIndex()]
-          setWrongQueue(Array.from(new Set(finalQueue)))
-          setMode("review")
-          setReviewPos(0)
-          setSelectedAnswer(null)
-          setShowResult(false)
-        } else {
-          // Perfecto sin fallos → completar
-          const finalScore = isCorrect ? score + question.points : score
-          const badges: string[] = []
-          if (correctAnswers + (isCorrect ? 1 : 0) === quizQuestions.length) badges.push("Perfeccionista")
-          if (finalScore >= 120) badges.push("Experto en Comunicación")
-          if (correctAnswers + (isCorrect ? 1 : 0) >= 5) badges.push("Conocedor")
-          onComplete(finalScore, badges)
-        }
-      } else {
-        // primera pasada sigue
-        setCurrentQuestion((q) => q + 1)
-        setSelectedAnswer(null)
-        setShowResult(false)
-      }
-    } else {
-      // REVIEW: quedarse hasta acertar
-      if (isCorrect) {
-        if (reviewPos < wrongQueue.length - 1) {
-          setReviewPos((p) => p + 1)
-          setSelectedAnswer(null)
-          setShowResult(false)
-        } else {
-          // fin del repaso
-          const finalScore = score + question.points // si acertó sumó
-          const badges: string[] = []
-          if (correctAnswers + 1 === quizQuestions.length) badges.push("Perfeccionista")
-          if (finalScore >= 120) badges.push("Experto en Comunicación")
-          if (correctAnswers + 1 >= 5) badges.push("Conocedor")
-          onComplete(finalScore, badges)
-        }
-      } else {
-        // sigue en la misma hasta acertar
-        setSelectedAnswer(null)
-        setShowResult(false)
-      }
+    if (isCorrect) {
+      setScore((s) => s + question.points)
+      setCorrectAnswers((c) => c + 1)
+    } else if (mode === "first") {
+      setWrongQueue((prev) => (prev.includes(getIndex()) ? prev : [...prev, getIndex()]))
     }
-  }, 1200) // puedes dejar 3000 si prefieres
-}
+
+    setShowResult(true)
+
+    setTimeout(() => {
+      if (mode === "first") {
+        if (isLastInFirstPass) {
+          if (wrongQueue.length > 0 || !isCorrect) {
+            const finalQueue = isCorrect ? wrongQueue : [...wrongQueue, getIndex()]
+            setWrongQueue(Array.from(new Set(finalQueue)))
+            setMode("review")
+            setReviewPos(0)
+            setSelectedAnswer(null)
+            setShowResult(false)
+          } else {
+            const finalScore = isCorrect ? score + question.points : score
+            const badges: string[] = []
+            if (correctAnswers + (isCorrect ? 1 : 0) === quizQuestions.length) badges.push("Perfeccionista")
+            if (finalScore >= 120) badges.push("Experto en Comunicación")
+            if (correctAnswers + (isCorrect ? 1 : 0) >= 5) badges.push("Conocedor")
+            onComplete(props.xpReward, props.coinReward)
+
+          }
+        } else {
+          setCurrentQuestion((q) => q + 1)
+          setSelectedAnswer(null)
+          setShowResult(false)
+        }
+      } else {
+        if (isCorrect) {
+          if (reviewPos < wrongQueue.length - 1) {
+            setReviewPos((p) => p + 1)
+            setSelectedAnswer(null)
+            setShowResult(false)
+          } else {
+            const finalScore = score + question.points
+            const badges: string[] = []
+            if (correctAnswers + 1 === quizQuestions.length) badges.push("Perfeccionista")
+            if (finalScore >= 120) badges.push("Experto en Comunicación")
+            if (correctAnswers + 1 >= 5) badges.push("Conocedor")
+            onComplete(props.xpReward, props.coinReward)
+
+          }
+        } else {
+          setSelectedAnswer(null)
+          setShowResult(false)
+        }
+      }
+    }, 1200)
+  }
 
   const getScorePercentage = () => {
     const maxScore = quizQuestions.reduce((sum, q) => sum + q.points, 0)
@@ -212,49 +211,60 @@ const handleNextQuestion = () => {
   if (showResult) {
     const isCorrect = selectedAnswer === question.correctAnswer
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 p-4 flex items-center justify-center">
-        <Card className="max-w-2xl w-full animate-bounce-in">
-          <CardContent className="p-8 text-center">
-            <div className="text-6xl mb-4">{isCorrect ? "✅" : "❌"}</div>
-            <h3 className="text-2xl font-bold mb-4">{isCorrect ? "¡Correcto!" : "Incorrecto"}</h3>
+      <div
+        className="min-h-screen bg-cover bg-center bg-no-repeat flex items-center justify-center"
+        style={{ backgroundImage: `url(${backgroundImage})` }}
+      >
+        <div className="absolute inset-0 bg-black/30"></div>
+        <div className="relative z-10 w-full max-w-2xl p-4">
+          <Card className="w-full animate-bounce-in">
+            <CardContent className="p-8 text-center">
+              <div className="text-6xl mb-4">{isCorrect ? "✅" : "❌"}</div>
+              <h3 className="text-2xl font-bold mb-4">{isCorrect ? "¡Correcto!" : "Incorrecto"}</h3>
 
-            {isCorrect && (
-              <div className="bg-green-100 rounded-lg p-4 mb-4">
-                <p className="text-lg font-semibold text-green-700 mb-2">+{question.points} puntos</p>
-                <Badge className="bg-green-500">{question.category}</Badge>
-              </div>
-            )}
-
-            <div className="bg-muted/50 rounded-lg p-4 mb-4 text-left">
-              <p className="font-semibold mb-2">Explicación:</p>
-              <p className="text-muted-foreground">{question.explanation}</p>
-              {!isCorrect && (
-                <p className="text-sm text-primary mt-2">
-                  Respuesta correcta: {question.options[question.correctAnswer]}
-                </p>
+              {isCorrect && (
+                <div className="bg-green-100 rounded-lg p-4 mb-4">
+                  <p className="text-lg font-semibold text-green-700 mb-2">+{question.points} puntos</p>
+                  <Badge className="bg-green-500">{question.category}</Badge>
+                </div>
               )}
-            </div>
 
-            <div className="flex items-center justify-center gap-2">
-              <Star className="w-5 h-5 text-yellow-500" />
-              <span className="font-bold">
-                Puntuación: {score} ({getScorePercentage()}%)
-              </span>
-            </div>
-          </CardContent>
-        </Card>
+              <div className="bg-muted/50 rounded-lg p-4 mb-4 text-left">
+                <p className="font-semibold mb-2">Explicación:</p>
+                <p className="text-muted-foreground">{question.explanation}</p>
+                {!isCorrect && (
+                  <p className="text-sm text-primary mt-2">
+                    Respuesta correcta: {question.options[question.correctAnswer]}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-center justify-center gap-2">
+                <Star className="w-5 h-5 text-yellow-500" />
+                <span className="font-bold">
+                  Puntuación: {score} ({getScorePercentage()}%)
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-cyan-50 p-4">
-      <div className="max-w-4xl mx-auto space-y-6">
+    <div
+      className="min-h-screen bg-cover bg-center bg-no-repeat relative"
+      style={{ backgroundImage: `url(${backgroundImage})` }}
+    >
+      <div className="absolute inset-0 bg-black/30"></div>
+
+      <div className="relative z-10 max-w-4xl mx-auto py-8 space-y-6">
         {/* Header */}
         <Card className="bg-gradient-to-r from-indigo-500 to-cyan-500 text-white border-0">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <Button variant="ghost" onClick={onExit} className="text-white hover:bg-white/20">
+              <Button variant="ghost" onClick={onBack} className="text-white hover:bg-white/20">
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Salir
               </Button>
@@ -284,7 +294,7 @@ const handleNextQuestion = () => {
               <Badge variant="outline">{question.category}</Badge>
               <Badge variant="secondary">{question.points} pts</Badge>
             </div>
-            <CardTitle className="text-xl text-balance leading-relaxed">{question.question}</CardTitle>
+            <CardTitle className="text-xl leading-relaxed">{question.question}</CardTitle>
           </CardHeader>
           <CardContent className="p-6">
             <div className="space-y-3 mb-8">
@@ -309,7 +319,7 @@ const handleNextQuestion = () => {
                     >
                       {String.fromCharCode(65 + index)}
                     </div>
-                    <span className="text-pretty leading-relaxed">{option}</span>
+                    <span>{option}</span>
                   </div>
                 </Button>
               ))}
@@ -335,7 +345,9 @@ const handleNextQuestion = () => {
           <CardContent className="p-4">
             <div className="flex items-center justify-between text-sm">
               <span>Progreso del Quiz</span>
-              <span className="font-semibold">{Math.round(((currentQuestion + 1) / quizQuestions.length) * 100)}%</span>
+              <span className="font-semibold">
+                {Math.round(((currentQuestion + 1) / quizQuestions.length) * 100)}%
+              </span>
             </div>
             <Progress value={((currentQuestion + 1) / quizQuestions.length) * 100} className="mt-2" />
           </CardContent>
