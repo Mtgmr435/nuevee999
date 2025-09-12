@@ -1,5 +1,5 @@
 // lib/levels/quizLevel1.ts
-export const quizLevel1 = {
+export const quizLevel2 = {
   id: 2,
   title: "Presentaciones Efectivas",
   type: "quiz" as const,
@@ -8,8 +8,8 @@ export const quizLevel1 = {
   coinReward: 25,
   background: "assets/worlds/montana.png",
   story:
-    "Debes presentar tu proyecto ante el consejo de capibaras. ¿Cómo logras captar su atención?",
-  hint: "Las buenas presentaciones inician con algo que conecte emocionalmente.",
+    "Debes presentar tu proyecto ante el consejo de capibaras ancianas. Tu misión es demostrar claridad, seguridad y lograr que todos te entiendan.",
+  hint: "Una buena presentación engancha desde el inicio, es clara y termina con un llamado a la acción.",
   steps: [
     {
       situation: "¿Cuál es la mejor manera de iniciar tu presentación?",

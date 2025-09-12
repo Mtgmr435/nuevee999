@@ -6,7 +6,7 @@ export const roleplayLevel1 = {
   duration: 8,
   xpReward: 50,
   coinReward: 20,
-  background: "jungle-campfire-night-scene-animated.png",
+  background: "assets/worlds/campamento.png",
   story:
     "Llegas a un campamento de capibaras exploradoras en medio de la selva. Es tu primer día y necesitas presentarte al grupo. Tu objetivo es causar una buena primera impresión.",
   hint:

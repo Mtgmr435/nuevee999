@@ -3,8 +3,8 @@
 import CourseList from "@/components/CourseList"
 import { UserData, pets, Pet } from "@/lib/userTypes"
 import LevelComponent from "@/components/LevelComponent"
-import RoleplayLevel from "@/components/RoleplayLevel"
-import QuizLevel from "@/components/QuizLevel"
+import RoleplayLevel from "@/playground/RoleplayLevel"
+import QuizLevel from "@/playground/QuizLevel"
 import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -132,7 +132,7 @@ const communicationLevels: Level[] = [
     coinReward: 20,
     isCompleted: false,
     isUnlocked: true,
-    world: "selva",
+    world: "campamento",
   },
   {
     id: 2,
@@ -147,14 +147,14 @@ const communicationLevels: Level[] = [
   },
   {
     id: 3,
-    title: "quiz",
-    type: "video",
+    title: "Comunicacion no verbal",
+    type: "roleplay",
     duration: 10,
     xpReward: 60,
     coinReward: 25,
     isCompleted: false,
     isUnlocked: true,
-    world: "mercado",
+    world: "rio",
   },
   {
     id: 4,
@@ -165,18 +165,18 @@ const communicationLevels: Level[] = [
     coinReward: 30,
     isCompleted: false,
     isUnlocked: false,
-    world: "ciudad",
+    world: "mercado",
   },
   {
     id: 5,
     title: "Presentaciones Efectivas",
-    type: "quiz",
+    type: "roleplay",
     duration: 15,
     xpReward: 100,
     coinReward: 40,
     isCompleted: false,
     isUnlocked: false,
-    world: "rio",
+    world: "selva",
   },
 ]
 
@@ -899,7 +899,6 @@ export default function Nu9veAcademy() {
             {currentView === "level" && currentLevel && (
  <LevelComponent
   levelId={allLevels[currentLevel - 1].id}
-  type={allLevels[currentLevel - 1].type}
   userData={userData}
   onComplete={(xp, coins, badges) =>
     completeLevel(currentLevel, xp, coins, badges)

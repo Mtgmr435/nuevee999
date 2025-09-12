@@ -100,7 +100,6 @@ export default function LevelPage({ params }: LevelPageProps) {
   return (
     <LevelComponent
   levelId={level.id}             // antes tenías level={level}
-  type={level.type}              // agregamos el tipo para que sepa si es roleplay o quiz
   userData={userData}
   onComplete={handleComplete}
   onBack={handleBack}

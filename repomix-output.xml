@@ -46,18 +46,13 @@ app/layout.tsx
 app/level/[id]/page.tsx
 app/page.tsx
 components.json
-components/AssessmentEngine.tsx
 components/AuthProvider.tsx
 components/CourseCard.tsx
 components/CourseList.tsx
 components/Dashboard.tsx
-components/DeckCarousel.tsx
-components/FirstEncountersLevel.tsx
 components/Leaderboard.tsx
 components/LevelComponent.tsx
 components/LoginButton.tsx
-components/QuizLevel.tsx
-components/RoleplayLevel.tsx
 components/ui/badge.tsx
 components/ui/button.tsx
 components/ui/card.tsx
@@ -68,11 +63,19 @@ lib/confetti.ts
 lib/firebase.ts
 lib/levelBackgrounds.ts
 lib/levels.ts
+lib/levels/index.ts
+lib/levels/quizLevel1.ts
+lib/levels/roleplayLevel1.ts
 lib/progress.ts
 lib/userTypes.ts
 lib/utils.ts
 next.config.ts
 package.json
+playground/AssessmentEngine.tsx
+playground/DeckCarousel.tsx
+playground/FirstEncountersLevel.tsx
+playground/QuizLevel.tsx
+playground/RoleplayLevel.tsx
 postcss.config.mjs
 public/file.svg
 public/globe.svg
@@ -85,6 +88,1279 @@ tsconfig.json
 
 <files>
 This section contains the contents of the repository's files.
+
+<file path="playground/AssessmentEngine.tsx">
+"use client"
+
+import { useState, useEffect } from "react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { Progress } from "@/components/ui/progress"
+import { Heart, Lightbulb, Award, Star } from "lucide-react"
+
+interface AssessmentItem {
+  id: string
+  question: string
+  options: {
+    text: string
+    correct: boolean
+    points: number
+  }[]
+  feedback: {
+    correct: string
+    incorrect: string
+  }
+  hint?: string
+}
+
+interface AssessmentLevel {
+  id: string
+  title: string
+  type: "roleplay" | "quiz" | "story" | "interactive"
+  hasContinuity: boolean
+  items: AssessmentItem[]
+  background?: string
+  story?: string
+}
+
+interface AssessmentEngineProps {
+  level: AssessmentLevel
+  userData: any
+  onComplete: (result: AssessmentResult) => void
+  onBack: () => void
+  onLoseLife: () => void
+}
+
+interface AssessmentResult {
+  score: number
+  mistakes: number
+  firstTryCorrect: number
+  medal: "platinum" | "gold" | "silver"
+  timeMs: number
+}
+
+export default function AssessmentEngine({ level, userData, onComplete, onBack, onLoseLife }: AssessmentEngineProps) {
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [selectedOption, setSelectedOption] = useState<number | null>(null)
+  const [showFeedback, setShowFeedback] = useState(false)
+  const [score, setScore] = useState(0)
+  const [mistakes, setMistakes] = useState(0)
+  const [firstTryCorrect, setFirstTryCorrect] = useState(0)
+  const [retryQueue, setRetryQueue] = useState<AssessmentItem[]>([])
+  const [isRetryRound, setIsRetryRound] = useState(false)
+  const [hintUsed, setHintUsed] = useState(false)
+  const [startTime] = useState(Date.now())
+  const [attemptedItems, setAttemptedItems] = useState<Set<string>>(new Set())
+  const [shuffledItems, setShuffledItems] = useState<AssessmentItem[]>([])
+  const isRoleplay = level.type === "roleplay"
+
+  const petDataMap: Record<"baby-capybara" | "adult-capybara" | "golden-capybara" | "ninja-capybara", { icon: string; name: string }> = {
+    "baby-capybara": { icon: "🐹", name: "Capi Bebé" },
+    "adult-capybara": { icon: "🦫", name: "Capi Adulto" },
+    "golden-capybara": { icon: "✨🦫", name: "Capi Dorado" },
+    "ninja-capybara": { icon: "🥷🦫", name: "Capi Ninja" },
+  }
+  const petData = petDataMap[userData.currentPet as keyof typeof petDataMap] || { icon: "🐹", name: "Capi Bebé" }
+
+  // Initialize shuffled items for quiz levels
+  useEffect(() => {
+    if (!level.hasContinuity) {
+      // Shuffle items with stable seed for resume capability
+      const shuffled = [...level.items].sort(() => Math.random() - 0.5)
+      setShuffledItems(shuffled)
+    } else {
+      setShuffledItems(level.items)
+    }
+  }, [level])
+
+  const currentItems = isRetryRound ? retryQueue : shuffledItems
+  const currentItem = currentItems[currentIndex]
+
+  const calculateMedal = (mistakeCount: number): "platinum" | "gold" | "silver" => {
+    if (mistakeCount === 0) return "platinum"
+    if (mistakeCount <= 2) return "gold"
+    return "silver"
+  }
+
+  const handleOptionSelect = (optionIndex: number) => {
+  setSelectedOption(optionIndex)
+  const option = currentItem.options[optionIndex]
+  const isFirstTry = !attemptedItems.has(currentItem.id)
+
+  if (option.correct) {
+    const points = isFirstTry ? option.points + 25 : option.points
+    setScore((prev) => prev + points)
+    if (isFirstTry) setFirstTryCorrect((prev) => prev + 1)
+    if (isRetryRound) {
+      // Saca del retryQueue si era de revisión
+      setRetryQueue((prev) => prev.filter((item) => item.id !== currentItem.id))
+    }
+  } else {
+    setMistakes((prev) => prev + 1)
+    setScore((prev) => prev - 50)
+    onLoseLife()
+    setAttemptedItems((prev) => new Set(prev).add(currentItem.id))
+
+    // SOLO los quizzes se revisan al final
+    if (!isRoleplay && !isRetryRound) {
+      setRetryQueue((prev) => prev.find((i) => i.id === currentItem.id) ? prev : [...prev, currentItem])
+    }
+  }
+
+  setShowFeedback(true)
+}
+
+// Reemplaza handleNext:
+const handleNext = () => {
+  const option = currentItem.options[selectedOption!]
+
+  if (isRoleplay) {
+    // Roleplay: reintento inmediato hasta acertar
+    if (option.correct) {
+      if (currentIndex < currentItems.length - 1) {
+        setCurrentIndex((prev) => prev + 1)
+        resetForNextItem()
+      } else {
+        completeAssessment()
+      }
+    } else {
+      // Reintentar esta misma
+      resetForNextItem()
+    }
+    return
+  }
+
+  // Quiz:
+  if (!isRetryRound) {
+    // Primera pasada: AVANZAR SIEMPRE, haya sido correcto o no
+    if (currentIndex < currentItems.length - 1) {
+      setCurrentIndex((prev) => prev + 1)
+      resetForNextItem()
+    } else {
+      // Primera pasada terminada → ver si hay revisión
+      if (retryQueue.length > 0) {
+        setIsRetryRound(true)
+        setCurrentIndex(0)
+        resetForNextItem()
+      } else {
+        completeAssessment()
+      }
+    }
+  } else {
+    // En revisión: quedarse hasta acertar
+    if (option.correct) {
+      if (retryQueue.filter((item) => item.id !== currentItem.id).length === 0) {
+        completeAssessment()
+      } else {
+        setCurrentIndex(0) // volvemos al inicio de la cola que queda
+        resetForNextItem()
+      }
+    } else {
+      // Reintentar esta misma
+      resetForNextItem()
+    }
+  }
+}
+
+  const resetForNextItem = () => {
+    setSelectedOption(null)
+    setShowFeedback(false)
+    setHintUsed(false)
+  }
+
+  const completeAssessment = () => {
+    const timeMs = Date.now() - startTime
+    const medal = calculateMedal(mistakes)
+
+    const result: AssessmentResult = {
+      score,
+      mistakes,
+      firstTryCorrect,
+      medal,
+      timeMs,
+    }
+
+    onComplete(result)
+  }
+
+  const showHint = () => {
+    if (!hintUsed && currentItem.hint) {
+      setHintUsed(true)
+    }
+  }
+
+  const getMedalIcon = (medal: string) => {
+    switch (medal) {
+      case "platinum":
+        return <Award className="w-5 h-5 text-blue-500" />
+      case "gold":
+        return <Award className="w-5 h-5 text-yellow-500" />
+      case "silver":
+        return <Award className="w-5 h-5 text-gray-400" />
+      default:
+        return <Star className="w-5 h-5 text-gray-300" />
+    }
+  }
+
+  if (!currentItem) {
+    return (
+      <div className="max-w-4xl mx-auto p-6 text-center">
+        <h2 className="text-2xl font-bold mb-4">Cargando...</h2>
+      </div>
+    )
+  }
+
+  return (
+    <div className="max-w-4xl mx-auto">
+      <div className="flex items-center gap-4 mb-6">
+        <Button variant="outline" onClick={onBack} className="border-amber-300 text-amber-700 bg-transparent">
+          ← Volver al curso
+        </Button>
+        <h1 className="text-2xl font-bold text-amber-800">{level.title}</h1>
+        <div className="text-3xl animate-bounce">{petData.icon}</div>
+        <div className="flex items-center gap-4 ml-auto">
+          <div className="flex items-center gap-2">
+            <Heart className="w-5 h-5 text-red-500" />
+            <span className="font-bold text-red-600">
+              {userData.lives}/{userData.maxLives}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            {getMedalIcon(calculateMedal(mistakes))}
+            <span className="text-sm text-gray-600">
+              {mistakes === 0 ? "Platino" : mistakes <= 2 ? "Oro" : "Plata"}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <Card className="relative overflow-hidden border-2 border-amber-300">
+        {level.background && (
+          <div
+            className="absolute inset-0 opacity-20"
+            style={{
+              backgroundImage: `url('${level.background}')`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+            }}
+          />
+        )}
+
+        <CardContent className="p-8 relative z-10">
+          <div className="mb-2 flex items-center justify-between">
+  <span className="text-sm font-medium text-amber-800">Progreso</span>
+  <span className="text-xs text-amber-700">
+    {isRetryRound && level.type === "quiz"
+      ? "Corrigiendo errores"
+      : `${currentIndex + 1} / ${currentItems.length}`}
+  </span>
+</div>
+
+<Progress
+  className="h-2"
+  value={
+    isRetryRound && level.type === "quiz"
+      ? 100
+      : Math.round(((currentIndex + 1) / Math.max(1, currentItems.length)) * 100)
+  }
+/>
+          {currentIndex === 0 && level.story && !isRetryRound && (
+            <div className="mb-6 p-4 bg-amber-50 rounded-lg border border-amber-200">
+              <p className="text-amber-800">{level.story}</p>
+            </div>
+          )}
+
+          <div className="mb-6 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="text-4xl">{petData.icon}</div>
+              <div>
+                <p className="text-sm text-amber-600">{petData.name} está aquí para ayudarte</p>
+                {hintUsed && currentItem.hint && (
+                  <div className="mt-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <p className="text-blue-800 text-sm">💡 {currentItem.hint}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+            {currentItem.hint && (
+              <Button
+                onClick={showHint}
+                disabled={hintUsed}
+                variant="outline"
+                size="sm"
+                className="border-blue-300 text-blue-700 bg-transparent"
+              >
+                <Lightbulb className="w-4 h-4 mr-2" />
+                {hintUsed ? "Pista usada" : "Pedir pista"}
+              </Button>
+            )}
+          </div>
+
+          <div className="mb-6">
+            <h3 className="text-xl font-semibold mb-4 text-amber-800">{currentItem.question}</h3>
+            <div className="space-y-3">
+              {currentItem.options.map((option, index) => (
+                <Button
+                  key={index}
+                  onClick={() => handleOptionSelect(index)}
+                  disabled={showFeedback}
+                  variant={selectedOption === index ? "default" : "outline"}
+                  className={`w-full text-left justify-start p-4 h-auto ${
+                    selectedOption === index
+                      ? option.correct
+                        ? "bg-green-500 hover:bg-green-600 text-white border-green-600"
+                        : "bg-red-500 hover:bg-red-600 text-white border-red-600"
+                      : "border-amber-300 text-amber-700 hover:bg-amber-50"
+                  }`}
+                >
+                  {option.text}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          {showFeedback && (
+            <div
+              className={`mb-6 p-4 rounded-lg border ${
+                currentItem.options[selectedOption!].correct
+                  ? "bg-green-50 border-green-200"
+                  : "bg-red-50 border-red-200"
+              }`}
+            >
+              <p
+                className={`font-medium ${
+                  currentItem.options[selectedOption!].correct ? "text-green-800" : "text-red-800"
+                }`}
+              >
+                {currentItem.options[selectedOption!].correct
+                  ? currentItem.feedback.correct
+                  : currentItem.feedback.incorrect}
+              </p>
+              <Button onClick={handleNext} className="mt-4 bg-amber-500 hover:bg-amber-600 text-white">
+                {selectedOption != null && currentItem.options[selectedOption].correct
+              
+                  ? (isRetryRound && retryQueue.filter((item) => item.id !== currentItem.id).length === 0) ||
+                    (!isRetryRound && currentIndex === currentItems.length - 1 && retryQueue.length === 0)
+                    ? "Completar nivel"
+                    : "Siguiente"
+                  : "Intentar de nuevo"}
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+</file>
+
+<file path="playground/DeckCarousel.tsx">
+"use client"
+
+import type React from "react"
+
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import { ChevronLeft, ChevronRight } from "lucide-react"
+import CourseCard from "./CourseCard"
+
+interface Course {
+  id: string
+  title: string
+  description: string
+  icon: string
+  color: string
+  totalLevels: number
+  completedLevels: number
+}
+
+interface DeckCarouselProps {
+  courses: Course[]
+  onCourseSelect: (courseId: string) => void
+}
+
+export default function DeckCarousel({ courses, onCourseSelect }: DeckCarouselProps) {
+  const [activeIndex, setActiveIndex] = useState(0)
+
+  const goToPrevious = () => {
+    setActiveIndex((prev) => (prev === 0 ? courses.length - 1 : prev - 1))
+  }
+
+  const goToNext = () => {
+    setActiveIndex((prev) => (prev === courses.length - 1 ? 0 : prev + 1))
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "ArrowLeft") goToPrevious()
+    if (e.key === "ArrowRight") goToNext()
+  }
+
+  return (
+    <div className="relative w-full max-w-4xl mx-auto" onKeyDown={handleKeyDown} tabIndex={0}>
+      <div className="relative h-96 flex items-center justify-center perspective-1000">
+        {courses.map((course, index) => {
+          const offset = index - activeIndex
+          const isActive = index === activeIndex
+
+          return (
+            <div
+              key={course.id}
+              className={`
+                absolute transition-all duration-500 ease-out
+                ${isActive ? "z-20" : "z-10"}
+              `}
+              style={{
+                transform: `
+                  translateX(${offset * 120}px) 
+                  translateZ(${isActive ? 0 : -100}px)
+                  rotateY(${offset * -15}deg)
+                  scale(${isActive ? 1 : 0.85})
+                `,
+                opacity: Math.abs(offset) > 1 ? 0 : isActive ? 1 : 0.6,
+              }}
+            >
+              <CourseCard
+                course={course}
+                isActive={isActive}
+                onSelect={() => onCourseSelect(course.id)}
+                className="w-64"
+              />
+            </div>
+          )
+        })}
+      </div>
+
+      <div className="flex justify-center gap-4 mt-6">
+        <Button
+          onClick={goToPrevious}
+          variant="outline"
+          size="sm"
+          className="border-amber-300 text-amber-700 hover:bg-amber-50 bg-transparent"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </Button>
+
+        <div className="flex items-center gap-2">
+          {courses.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => setActiveIndex(index)}
+              className={`w-2 h-2 rounded-full transition-colors ${
+                index === activeIndex ? "bg-amber-500" : "bg-amber-200"
+              }`}
+            />
+          ))}
+        </div>
+
+        <Button
+          onClick={goToNext}
+          variant="outline"
+          size="sm"
+          className="border-amber-300 text-amber-700 hover:bg-amber-50 bg-transparent"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </Button>
+      </div>
+    </div>
+  )
+}
+</file>
+
+<file path="playground/FirstEncountersLevel.tsx">
+"use client"
+
+import { useState } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Progress } from "@/components/ui/progress"
+import { MessageCircle, Lightbulb, Star, ArrowRight } from "lucide-react"
+
+interface Choice {
+  id: string
+  text: string
+  points: number
+  feedback: string
+  capibaraTip: string
+}
+
+interface Scenario {
+  id: number
+  situation: string
+  character: string
+  choices: Choice[]
+}
+
+const scenarios: Scenario[] = [
+  {
+    id: 1,
+    situation:
+      "Te encuentras en una conferencia de networking y ves a alguien interesante cerca de la mesa de café. ¿Cómo te acercas?",
+    character: "Profesional de marketing",
+    choices: [
+      {
+        id: "a",
+        text: "Me acerco directamente y digo: 'Hola, soy [nombre], ¿en qué trabajas?'",
+        points: 60,
+        feedback: "Directo pero un poco abrupto. Podrías ser más cálido en tu aproximación.",
+        capibaraTip: "Recuerda que la primera impresión es clave. ¡Sonríe siempre y muestra interés genuino!",
+      },
+      {
+        id: "b",
+        text: "Espero a que termine de servirse café y comento: 'Este café huele increíble, ¿has probado los pasteles?'",
+        points: 90,
+        feedback: "¡Excelente! Iniciaste con algo neutral y amigable que invita a la conversación.",
+        capibaraTip: "¡Perfecto! Usar el entorno como punto de partida es una técnica genial 🎉",
+      },
+      {
+        id: "c",
+        text: "Me quedo esperando a que esa persona me hable primero",
+        points: 20,
+        feedback: "Muy pasivo. Las oportunidades de networking requieren que tomes la iniciativa.",
+        capibaraTip: "¡Vamos, explorador! La confianza se construye con práctica. ¡Inténtalo de nuevo!",
+      },
+    ],
+  },
+  {
+    id: 2,
+    situation: "La conversación va bien y quieres conocer más sobre su trabajo. ¿Qué preguntas?",
+    character: "Profesional de marketing",
+    choices: [
+      {
+        id: "a",
+        text: "¿Cuánto ganas en tu trabajo?",
+        points: 10,
+        feedback: "¡Demasiado personal! Esta pregunta puede hacer que la persona se sienta incómoda.",
+        capibaraTip: "¡Ups! Evita temas muy personales al principio. Mejor enfócate en sus intereses profesionales.",
+      },
+      {
+        id: "b",
+        text: "¿Qué es lo que más te gusta de trabajar en marketing?",
+        points: 95,
+        feedback: "¡Perfecto! Esta pregunta muestra interés genuino y permite que la persona comparta su pasión.",
+        capibaraTip: "¡Excelente elección! Las preguntas sobre pasiones crean conexiones auténticas ✨",
+      },
+      {
+        id: "c",
+        text: "Ah, marketing... debe ser fácil, ¿no?",
+        points: 30,
+        feedback: "Esto puede sonar condescendiente. Evita minimizar el trabajo de otros.",
+        capibaraTip: "Recuerda mostrar respeto por el trabajo de otros. ¡Cada profesión tiene sus desafíos!",
+      },
+    ],
+  },
+]
+
+export default function FirstEncountersLevel() {
+  const [currentScenario, setCurrentScenario] = useState(0)
+  const [selectedChoice, setSelectedChoice] = useState<string | null>(null)
+  const [showFeedback, setShowFeedback] = useState(false)
+  const [totalPoints, setTotalPoints] = useState(0)
+  const [showCapibaraTip, setShowCapibaraTip] = useState(false)
+
+  const handleChoiceSelect = (choice: Choice) => {
+    setSelectedChoice(choice.id)
+    setShowFeedback(true)
+    setTotalPoints((prev) => prev + choice.points)
+
+    // Show capybara tip after a delay
+    setTimeout(() => {
+      setShowCapibaraTip(true)
+    }, 1500)
+  }
+
+  const nextScenario = () => {
+    if (currentScenario < scenarios.length - 1) {
+      setCurrentScenario((prev) => prev + 1)
+      setSelectedChoice(null)
+      setShowFeedback(false)
+      setShowCapibaraTip(false)
+    }
+  }
+
+  const currentScene = scenarios[currentScenario]
+  const selectedChoiceData = currentScene.choices.find((c) => c.id === selectedChoice)
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-100 relative overflow-hidden">
+      {/* Animated jungle background */}
+      <div
+        className="absolute inset-0 opacity-30"
+        style={{
+          backgroundImage: `url('/jungle-campfire-night-scene-animated.png')`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+      ></div>
+
+      <div className="relative z-10 max-w-4xl mx-auto p-6">
+        {/* Header */}
+        <Card className="mb-6 border-amber-200 bg-white/90 backdrop-blur-sm">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <MessageCircle className="w-8 h-8 text-amber-600" />
+                <div>
+                  <CardTitle className="text-2xl text-amber-800">Primeros Encuentros</CardTitle>
+                  <p className="text-amber-600">Aprende a hacer una primera impresión positiva</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-4">
+                <Badge className="bg-amber-500 text-white">
+                  <Star className="w-4 h-4 mr-1" />
+                  {totalPoints} puntos
+                </Badge>
+                <div className="text-4xl animate-bounce">🦫</div>
+              </div>
+            </div>
+            <Progress value={((currentScenario + 1) / scenarios.length) * 100} className="mt-4" />
+            <p className="text-sm text-amber-600">
+              Escenario {currentScenario + 1} de {scenarios.length}
+            </p>
+          </CardHeader>
+        </Card>
+
+        {/* Main scenario */}
+        <Card className="mb-6 border-amber-200 bg-white/95 backdrop-blur-sm">
+          <CardContent className="p-8">
+            <div className="mb-6">
+              <Badge variant="outline" className="mb-4 border-amber-300 text-amber-700">
+                {currentScene.character}
+              </Badge>
+              <h3 className="text-xl font-semibold text-amber-800 mb-4">{currentScene.situation}</h3>
+            </div>
+
+            {/* Choices */}
+            <div className="space-y-4">
+              {currentScene.choices.map((choice) => (
+                <Button
+                  key={choice.id}
+                  variant={selectedChoice === choice.id ? "default" : "outline"}
+                  className={`w-full text-left p-6 h-auto justify-start ${
+                    selectedChoice === choice.id
+                      ? "bg-amber-500 hover:bg-amber-600 text-white"
+                      : "border-amber-200 text-amber-800 hover:bg-amber-50"
+                  }`}
+                  onClick={() => handleChoiceSelect(choice)}
+                  disabled={showFeedback}
+                >
+                  <div className="flex items-start gap-3">
+                    <span className="font-bold text-lg">{choice.id.toUpperCase()})</span>
+                    <span className="text-base leading-relaxed">{choice.text}</span>
+                  </div>
+                </Button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Feedback */}
+        {showFeedback && selectedChoiceData && (
+          <Card className="mb-6 border-green-200 bg-green-50/90 backdrop-blur-sm animate-in slide-in-from-bottom duration-500">
+            <CardContent className="p-6">
+              <div className="flex items-start gap-4">
+                <div className="text-3xl">
+                  {selectedChoiceData.points >= 80 ? "🎉" : selectedChoiceData.points >= 60 ? "👍" : "💭"}
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-green-800 mb-2">+{selectedChoiceData.points} puntos</h4>
+                  <p className="text-green-700">{selectedChoiceData.feedback}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Capybara tip */}
+        {showCapibaraTip && selectedChoiceData && (
+          <Card className="mb-6 border-blue-200 bg-blue-50/90 backdrop-blur-sm animate-in slide-in-from-right duration-700">
+            <CardContent className="p-6">
+              <div className="flex items-start gap-4">
+                <div className="text-4xl animate-bounce">🦫</div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Lightbulb className="w-5 h-5 text-blue-600" />
+                    <h4 className="font-semibold text-blue-800">Consejo de Capi</h4>
+                  </div>
+                  <p className="text-blue-700">{selectedChoiceData.capibaraTip}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Next button */}
+        {showFeedback && (
+          <div className="text-center">
+            {currentScenario < scenarios.length - 1 ? (
+              <Button
+                onClick={nextScenario}
+                className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white px-8 py-3 text-lg"
+              >
+                Siguiente Escenario
+                <ArrowRight className="w-5 h-5 ml-2" />
+              </Button>
+            ) : (
+              <Button className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-8 py-3 text-lg">
+                ¡Completar Nivel!
+                <Star className="w-5 h-5 ml-2" />
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+</file>
+
+<file path="playground/QuizLevel.tsx">
+"use client"
+
+import { useState } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Progress } from "@/components/ui/progress"
+import { Star, ArrowLeft, Brain, Target, Heart } from "lucide-react"
+import { levelBackgrounds } from "@/lib/levelBackgrounds"
+import { UserData } from "@/lib/userTypes"
+import { launchConfetti } from "@/lib/confetti"
+import useSound from "@/hooks/useSound"
+
+// 🔹 Tipos
+interface QuizQuestion {
+  id: number
+  question: string
+  options: string[]
+  correctAnswer: number
+  explanation: string
+  points: number
+  category: string
+}
+
+interface QuizLevelProps {
+  levelId: number
+  world: "selva" | "montana" | "rio" | "mercado" | "ciudad"
+  xpReward: number
+  coinReward: number
+  userData: UserData
+  onComplete: (xp: number, coins: number, badges: string[]) => void
+
+  onBack: () => void
+  onLoseLife: () => void
+}
+
+// 🔹 Preguntas de ejemplo
+const quizQuestions: QuizQuestion[] = [
+  {
+    id: 1,
+    question: "¿Cuál es el principio más importante para establecer rapport en una primera conversación?",
+    options: [
+      "Hablar sobre tus logros profesionales",
+      "Encontrar puntos en común y mostrar interés genuino",
+      "Hacer preguntas directas sobre el trabajo",
+      "Mantener una postura dominante",
+    ],
+    correctAnswer: 1,
+    explanation: "El rapport se construye encontrando conexiones genuinas y mostrando interés real en la otra persona.",
+    points: 20,
+    category: "Construcción de Rapport",
+  },
+  {
+    id: 2,
+    question: "Cuando alguien comparte un problema contigo, ¿cuál es la mejor respuesta inicial?",
+    options: [
+      "Ofrecer una solución inmediata",
+      "Cambiar de tema para aliviar la tensión",
+      "Validar sus sentimientos y hacer preguntas para entender mejor",
+      "Contar una experiencia similar tuya",
+    ],
+    correctAnswer: 2,
+    explanation: "La escucha activa requiere primero validar los sentimientos de la persona y buscar entender completamente.",
+    points: 25,
+    category: "Escucha Activa",
+  },
+]
+
+// 🔹 Insignias de ejemplo
+const badgeRules = [
+  { name: "Perfeccionista", condition: (correct: number, total: number) => correct === total },
+  { name: "Experto en Comunicación", condition: (_: number, __: number, score: number) => score >= 40 },
+]
+
+export default function QuizLevel({
+  levelId,
+  world,
+  xpReward,
+  coinReward,
+  userData,
+  onComplete,
+  onBack,
+  onLoseLife,
+}: QuizLevelProps) {
+  const [currentQuestion, setCurrentQuestion] = useState(0)
+  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null)
+  const [showFeedback, setShowFeedback] = useState(false)
+  const [score, setScore] = useState(0)
+  const [correctAnswers, setCorrectAnswers] = useState(0)
+  const [wrongQueue, setWrongQueue] = useState<number[]>([])
+  const [mode, setMode] = useState<"first" | "review">("first")
+  const [reviewPos, setReviewPos] = useState(0)
+
+  const backgroundImage = levelBackgrounds[world] || levelBackgrounds["selva"]
+
+  // 🎵 sonidos
+  const playClick = useSound("/sounds/click.mp3")
+  const playSuccess = useSound("/sounds/success.mp3")
+  const playSuccess2 = useSound("/sounds/success2.mp3")
+  const playFail = useSound("/sounds/fail.mp3")
+
+  const getIndex = () => (mode === "first" ? currentQuestion : wrongQueue[reviewPos])
+  const question = quizQuestions[getIndex()]
+
+  const handleAnswerSelect = (answerIndex: number) => {
+    playClick()
+    setSelectedAnswer(answerIndex)
+  }
+
+  const handleNextQuestion = () => {
+    if (selectedAnswer === null) return
+    const isCorrect = selectedAnswer === question.correctAnswer
+
+    if (isCorrect) {
+      playSuccess2()
+      setScore((s) => s + question.points)
+      setCorrectAnswers((c) => c + 1)
+    } else {
+      playFail()
+      onLoseLife()
+      if (mode === "first") {
+        setWrongQueue((prev) => (prev.includes(getIndex()) ? prev : [...prev, getIndex()]))
+      }
+    }
+
+    setShowFeedback(true)
+
+    setTimeout(() => {
+      setShowFeedback(false)
+      setSelectedAnswer(null)
+
+      if (mode === "first") {
+        if (currentQuestion < quizQuestions.length - 1) {
+          setCurrentQuestion((q) => q + 1)
+        } else if (wrongQueue.length > 0 || !isCorrect) {
+          setMode("review")
+          setReviewPos(0)
+          if (!isCorrect) setWrongQueue((prev) => [...prev, getIndex()])
+        } else {
+          finishQuiz()
+        }
+      } else {
+        if (isCorrect) {
+          if (reviewPos < wrongQueue.length - 1) {
+            setReviewPos((p) => p + 1)
+          } else {
+            finishQuiz()
+          }
+        }
+      }
+    }, 1500)
+  }
+
+  const finishQuiz = () => {
+    playSuccess()
+    launchConfetti()
+
+    const badges: string[] = []
+    badgeRules.forEach((rule) => {
+      if (rule.condition(correctAnswers, quizQuestions.length, score)) {
+        badges.push(rule.name)
+      }
+    })
+
+    onComplete(xpReward, coinReward, badges)
+  }
+
+  const progressValue =
+    mode === "first"
+      ? ((currentQuestion + 1) / quizQuestions.length) * 100
+      : ((reviewPos + 1) / wrongQueue.length) * 100
+
+  // 🎨 Vista feedback
+  if (showFeedback) {
+    const isCorrect = selectedAnswer === question.correctAnswer
+    return (
+      <div
+        className="min-h-screen bg-cover bg-center bg-no-repeat flex items-center justify-center"
+        style={{ backgroundImage: `url(${backgroundImage})` }}
+      >
+        <div className="absolute inset-0 bg-black/40"></div>
+        <div className="relative z-10 w-full max-w-2xl p-4">
+          <Card className="w-full animate-bounce-in">
+            <CardContent className="p-8 text-center">
+              <div className="text-6xl mb-4">{isCorrect ? "✅" : "❌"}</div>
+              <h3 className="text-2xl font-bold mb-4">{isCorrect ? "¡Correcto!" : "Incorrecto"}</h3>
+
+              {isCorrect && (
+                <div className="bg-green-100 rounded-lg p-4 mb-4">
+                  <p className="text-lg font-semibold text-green-700 mb-2">+{question.points} puntos</p>
+                  <Badge className="bg-green-500">{question.category}</Badge>
+                </div>
+              )}
+
+              {!isCorrect && (
+                <div className="bg-red-100 rounded-lg p-4 mb-4">
+                  <p className="text-red-700 font-medium">(-1 vida)</p>
+                  <p className="text-sm text-red-600 mt-1">Respuesta correcta: {question.options[question.correctAnswer]}</p>
+                </div>
+              )}
+
+              <div className="text-sm text-gray-700">{question.explanation}</div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
+  }
+
+  // 🎨 Vista normal
+  return (
+    <div
+      className="min-h-screen bg-cover bg-center bg-no-repeat relative"
+      style={{ backgroundImage: `url(${backgroundImage})` }}
+    >
+      <div className="absolute inset-0 bg-black/30"></div>
+
+      <div className="relative z-10 max-w-4xl mx-auto py-8 space-y-6">
+        {/* Header */}
+        <Card className="bg-white/90">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <Button variant="ghost" onClick={onBack}>
+                <ArrowLeft className="w-4 h-4 mr-2" /> Salir
+              </Button>
+              <div className="flex items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <Brain className="w-5 h-5 text-indigo-600" />
+                  <span className="font-bold">Quiz</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Star className="w-5 h-5 text-yellow-500" />
+                  <span className="font-bold">{score} pts</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Heart className="w-5 h-5 text-red-500" />
+                  <span className="font-bold text-red-600">
+                    {userData.lives}/{userData.maxLives}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <Progress value={progressValue} />
+            <p className="text-sm text-gray-600 mt-2">
+              {mode === "first"
+                ? `Pregunta ${currentQuestion + 1} de ${quizQuestions.length}`
+                : `Corrigiendo errores (${reviewPos + 1}/${wrongQueue.length})`}
+            </p>
+          </CardHeader>
+        </Card>
+
+        {/* Pregunta */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-3 mb-2">
+              <Target className="w-6 h-6 text-primary" />
+              <Badge variant="outline">{question.category}</Badge>
+              <Badge variant="secondary">{question.points} pts</Badge>
+            </div>
+            <CardTitle className="text-xl leading-relaxed">{question.question}</CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="space-y-3 mb-8">
+              {question.options.map((option, index) => (
+                <Button
+                  key={index}
+                  onClick={() => handleAnswerSelect(index)}
+                  variant={selectedAnswer === index ? "default" : "outline"}
+                  className={`w-full p-4 h-auto text-left justify-start ${
+                    selectedAnswer === index
+                      ? "bg-indigo-500 text-white"
+                      : "hover:bg-indigo-50 border-indigo-200"
+                  }`}
+                >
+                  <div className="flex items-center gap-4">
+                    <div
+                      className={`w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold ${
+                        selectedAnswer === index
+                          ? "border-white text-white"
+                          : "border-indigo-500 text-indigo-600"
+                      }`}
+                    >
+                      {String.fromCharCode(65 + index)}
+                    </div>
+                    <span>{option}</span>
+                  </div>
+                </Button>
+              ))}
+            </div>
+
+            <div className="flex justify-end">
+              <Button
+                onClick={handleNextQuestion}
+                disabled={selectedAnswer === null}
+                className="bg-indigo-500 hover:bg-indigo-600 text-white"
+              >
+                {mode === "first" && currentQuestion === quizQuestions.length - 1
+                  ? "Finalizar"
+                  : mode === "review" && reviewPos === wrongQueue.length - 1
+                  ? "Completar Quiz"
+                  : "Siguiente"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
+}
+</file>
+
+<file path="playground/RoleplayLevel.tsx">
+"use client"
+
+import { useState } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Progress } from "@/components/ui/progress"
+import { Star, ArrowLeft, Heart } from "lucide-react"
+import { levelBackgrounds } from "@/lib/levelBackgrounds"
+import { UserData } from "@/lib/userTypes"
+import { launchConfetti } from "@/lib/confetti"
+import useSound from "@/hooks/useSound"
+
+// 🔹 Tipos de datos
+interface Choice {
+  text: string
+  points: number
+  principle: string
+  nextScene: number
+  feedback: string
+}
+
+interface Scene {
+  id: number
+  title: string
+  description: string
+  capibaraExpression: string
+  situation: string
+  choices: Choice[]
+}
+
+interface RoleplayLevelProps {
+  levelId: number
+  world: "selva" | "montana" | "rio" | "mercado" | "ciudad"
+  userData: UserData
+  onComplete: (xp: number, coins: number, badges: string[]) => void
+  onExit: () => void
+  onLoseLife: () => void
+}
+
+// 🔹 Escenas de ejemplo
+const communicationScenes: Scene[] = [
+  {
+    id: 1,
+    title: "🌿 Primer Encuentro",
+    description: "Llegas a un campamento de capibaras exploradoras...",
+    capibaraExpression: "🙂",
+    situation: "Situación: Es tu primer día y necesitas presentarte al grupo.",
+    choices: [
+      {
+        text: "Con una sonrisa cálida y contacto visual directo",
+        points: 20,
+        principle: "Empatía",
+        nextScene: 2,
+        feedback: "¡Excelente! Mostraste apertura y calidez.",
+      },
+      {
+        text: "Con un saludo rápido sin mirar mucho",
+        points: 5,
+        principle: "Pasividad",
+        nextScene: 2,
+        feedback: "Podría ser mejor, faltó conexión.",
+      },
+      {
+        text: "Esperando a que ella hable primero",
+        points: 0,
+        principle: "Inseguridad",
+        nextScene: 2,
+        feedback: "Oportunidad perdida, deberías tomar la iniciativa.",
+      },
+    ],
+  },
+  {
+    id: 2,
+    title: "🎯 Fin del nivel",
+    description: "Has terminado este roleplay de prueba.",
+    capibaraExpression: "🤗",
+    situation: "¡Felicidades! Completaste el nivel.",
+    choices: [],
+  },
+]
+
+// 🔹 Insignias
+const badges = [
+  { name: "Empático", threshold: 15 },
+  { name: "Comunicador", threshold: 25 },
+]
+
+export default function RoleplayLevel({
+  levelId,
+  world,
+  userData,
+  onComplete,
+  onExit,
+  onLoseLife,
+}: RoleplayLevelProps) {
+  const [currentScene, setCurrentScene] = useState(1)
+  const [score, setScore] = useState(0)
+  const [earnedBadges, setEarnedBadges] = useState<string[]>([])
+  const [showFeedback, setShowFeedback] = useState(false)
+  const [lastChoice, setLastChoice] = useState<Choice | null>(null)
+
+  const scene = communicationScenes.find((s) => s.id === currentScene)
+  const backgroundImage = levelBackgrounds[world] || levelBackgrounds["selva"]
+
+  // 🎵 sonidos
+  const playClick = useSound("/sounds/click.mp3")
+  const playSuccess = useSound("/sounds/success.mp3") // al completar nivel
+  const playSuccess2 = useSound("/sounds/success2.mp3") // al responder bien
+  const playFail = useSound("/sounds/fail.mp3")
+
+  const makeChoice = (choiceIndex: number) => {
+    if (!scene) return
+    const choice = scene.choices[choiceIndex]
+    setLastChoice(choice)
+    setShowFeedback(true)
+
+    if (choice.points > 0) {
+      setScore((prev) => prev + choice.points)
+      playSuccess2()
+    } else {
+      playFail()
+      onLoseLife()
+    }
+
+    // badges dinámicos
+    const newBadges = badges
+      .filter((b) => score + choice.points >= b.threshold && !earnedBadges.includes(b.name))
+      .map((b) => b.name)
+
+    if (newBadges.length > 0) {
+      setEarnedBadges([...earnedBadges, ...newBadges])
+    }
+
+    setTimeout(() => {
+      setShowFeedback(false)
+      if (choice.nextScene === 2) {
+        playSuccess()
+        launchConfetti()
+        onComplete(score + choice.points, 0, [...earnedBadges, ...newBadges]) 
+      } else {
+        setCurrentScene(choice.nextScene)
+      }
+    }, 2000)
+  }
+
+  if (!scene) return null
+
+  // 🎨 Vista feedback
+  if (showFeedback && lastChoice) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center bg-cover bg-center"
+        style={{ backgroundImage: `url(${backgroundImage})` }}
+      >
+        <div className="absolute inset-0 bg-black/40"></div>
+        <Card className="max-w-lg w-full relative z-10 animate-bounce-in">
+          <CardContent className="p-6 text-center">
+            <div className="text-5xl mb-4">{lastChoice.points > 0 ? "✅" : "❌"}</div>
+            <h3 className="text-xl font-bold mb-2">
+              {lastChoice.points > 0 ? "¡Correcto!" : "Incorrecto"}
+            </h3>
+            <p className="mb-2">+{lastChoice.points} puntos</p>
+            <Badge>{lastChoice.principle}</Badge>
+            <p className="text-sm mt-2">{lastChoice.feedback}</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  // 🎨 Vista normal
+  return (
+    <div
+      className="min-h-screen bg-cover bg-center bg-no-repeat relative"
+      style={{ backgroundImage: `url(${backgroundImage})` }}
+    >
+      <div className="absolute inset-0 bg-black/20"></div>
+
+      <div className="relative z-10 max-w-4xl mx-auto py-8 space-y-6">
+        {/* Header */}
+        <Card className="bg-white/80">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <Button variant="ghost" onClick={onExit}>
+                <ArrowLeft className="w-4 h-4 mr-2" /> Salir
+              </Button>
+              <div className="flex items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <Star className="w-5 h-5 text-yellow-500" />
+                  <span className="font-bold">{score} pts</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Heart className="w-5 h-5 text-red-500" />
+                  <span className="font-bold text-red-600">
+                    {userData.lives}/{userData.maxLives}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <Progress value={(currentScene / communicationScenes.length) * 100} />
+          </CardHeader>
+        </Card>
+
+        {/* Escena */}
+        <Card>
+          <CardHeader>
+            <CardTitle>{scene.title}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="mb-4">{scene.description}</p>
+            <div className="text-6xl mb-4">{scene.capibaraExpression}</div>
+            <p className="italic mb-6">{scene.situation}</p>
+
+            {/* Opciones */}
+            {scene.choices.map((choice, index) => (
+              <Button
+                key={index}
+                onClick={() => {
+                  playClick()
+                  makeChoice(index)
+                }}
+                className="w-full mb-3"
+              >
+                {choice.text}
+              </Button>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
+}
+</file>
 
 <file path=".gitignore">
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
@@ -695,366 +1971,6 @@ export default function Dashboard() {
 }
 </file>
 
-<file path="components/DeckCarousel.tsx">
-"use client"
-
-import type React from "react"
-
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { ChevronLeft, ChevronRight } from "lucide-react"
-import CourseCard from "./CourseCard"
-
-interface Course {
-  id: string
-  title: string
-  description: string
-  icon: string
-  color: string
-  totalLevels: number
-  completedLevels: number
-}
-
-interface DeckCarouselProps {
-  courses: Course[]
-  onCourseSelect: (courseId: string) => void
-}
-
-export default function DeckCarousel({ courses, onCourseSelect }: DeckCarouselProps) {
-  const [activeIndex, setActiveIndex] = useState(0)
-
-  const goToPrevious = () => {
-    setActiveIndex((prev) => (prev === 0 ? courses.length - 1 : prev - 1))
-  }
-
-  const goToNext = () => {
-    setActiveIndex((prev) => (prev === courses.length - 1 ? 0 : prev + 1))
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "ArrowLeft") goToPrevious()
-    if (e.key === "ArrowRight") goToNext()
-  }
-
-  return (
-    <div className="relative w-full max-w-4xl mx-auto" onKeyDown={handleKeyDown} tabIndex={0}>
-      <div className="relative h-96 flex items-center justify-center perspective-1000">
-        {courses.map((course, index) => {
-          const offset = index - activeIndex
-          const isActive = index === activeIndex
-
-          return (
-            <div
-              key={course.id}
-              className={`
-                absolute transition-all duration-500 ease-out
-                ${isActive ? "z-20" : "z-10"}
-              `}
-              style={{
-                transform: `
-                  translateX(${offset * 120}px) 
-                  translateZ(${isActive ? 0 : -100}px)
-                  rotateY(${offset * -15}deg)
-                  scale(${isActive ? 1 : 0.85})
-                `,
-                opacity: Math.abs(offset) > 1 ? 0 : isActive ? 1 : 0.6,
-              }}
-            >
-              <CourseCard
-                course={course}
-                isActive={isActive}
-                onSelect={() => onCourseSelect(course.id)}
-                className="w-64"
-              />
-            </div>
-          )
-        })}
-      </div>
-
-      <div className="flex justify-center gap-4 mt-6">
-        <Button
-          onClick={goToPrevious}
-          variant="outline"
-          size="sm"
-          className="border-amber-300 text-amber-700 hover:bg-amber-50 bg-transparent"
-        >
-          <ChevronLeft className="w-4 h-4" />
-        </Button>
-
-        <div className="flex items-center gap-2">
-          {courses.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => setActiveIndex(index)}
-              className={`w-2 h-2 rounded-full transition-colors ${
-                index === activeIndex ? "bg-amber-500" : "bg-amber-200"
-              }`}
-            />
-          ))}
-        </div>
-
-        <Button
-          onClick={goToNext}
-          variant="outline"
-          size="sm"
-          className="border-amber-300 text-amber-700 hover:bg-amber-50 bg-transparent"
-        >
-          <ChevronRight className="w-4 h-4" />
-        </Button>
-      </div>
-    </div>
-  )
-}
-</file>
-
-<file path="components/FirstEncountersLevel.tsx">
-"use client"
-
-import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { MessageCircle, Lightbulb, Star, ArrowRight } from "lucide-react"
-
-interface Choice {
-  id: string
-  text: string
-  points: number
-  feedback: string
-  capibaraTip: string
-}
-
-interface Scenario {
-  id: number
-  situation: string
-  character: string
-  choices: Choice[]
-}
-
-const scenarios: Scenario[] = [
-  {
-    id: 1,
-    situation:
-      "Te encuentras en una conferencia de networking y ves a alguien interesante cerca de la mesa de café. ¿Cómo te acercas?",
-    character: "Profesional de marketing",
-    choices: [
-      {
-        id: "a",
-        text: "Me acerco directamente y digo: 'Hola, soy [nombre], ¿en qué trabajas?'",
-        points: 60,
-        feedback: "Directo pero un poco abrupto. Podrías ser más cálido en tu aproximación.",
-        capibaraTip: "Recuerda que la primera impresión es clave. ¡Sonríe siempre y muestra interés genuino!",
-      },
-      {
-        id: "b",
-        text: "Espero a que termine de servirse café y comento: 'Este café huele increíble, ¿has probado los pasteles?'",
-        points: 90,
-        feedback: "¡Excelente! Iniciaste con algo neutral y amigable que invita a la conversación.",
-        capibaraTip: "¡Perfecto! Usar el entorno como punto de partida es una técnica genial 🎉",
-      },
-      {
-        id: "c",
-        text: "Me quedo esperando a que esa persona me hable primero",
-        points: 20,
-        feedback: "Muy pasivo. Las oportunidades de networking requieren que tomes la iniciativa.",
-        capibaraTip: "¡Vamos, explorador! La confianza se construye con práctica. ¡Inténtalo de nuevo!",
-      },
-    ],
-  },
-  {
-    id: 2,
-    situation: "La conversación va bien y quieres conocer más sobre su trabajo. ¿Qué preguntas?",
-    character: "Profesional de marketing",
-    choices: [
-      {
-        id: "a",
-        text: "¿Cuánto ganas en tu trabajo?",
-        points: 10,
-        feedback: "¡Demasiado personal! Esta pregunta puede hacer que la persona se sienta incómoda.",
-        capibaraTip: "¡Ups! Evita temas muy personales al principio. Mejor enfócate en sus intereses profesionales.",
-      },
-      {
-        id: "b",
-        text: "¿Qué es lo que más te gusta de trabajar en marketing?",
-        points: 95,
-        feedback: "¡Perfecto! Esta pregunta muestra interés genuino y permite que la persona comparta su pasión.",
-        capibaraTip: "¡Excelente elección! Las preguntas sobre pasiones crean conexiones auténticas ✨",
-      },
-      {
-        id: "c",
-        text: "Ah, marketing... debe ser fácil, ¿no?",
-        points: 30,
-        feedback: "Esto puede sonar condescendiente. Evita minimizar el trabajo de otros.",
-        capibaraTip: "Recuerda mostrar respeto por el trabajo de otros. ¡Cada profesión tiene sus desafíos!",
-      },
-    ],
-  },
-]
-
-export default function FirstEncountersLevel() {
-  const [currentScenario, setCurrentScenario] = useState(0)
-  const [selectedChoice, setSelectedChoice] = useState<string | null>(null)
-  const [showFeedback, setShowFeedback] = useState(false)
-  const [totalPoints, setTotalPoints] = useState(0)
-  const [showCapibaraTip, setShowCapibaraTip] = useState(false)
-
-  const handleChoiceSelect = (choice: Choice) => {
-    setSelectedChoice(choice.id)
-    setShowFeedback(true)
-    setTotalPoints((prev) => prev + choice.points)
-
-    // Show capybara tip after a delay
-    setTimeout(() => {
-      setShowCapibaraTip(true)
-    }, 1500)
-  }
-
-  const nextScenario = () => {
-    if (currentScenario < scenarios.length - 1) {
-      setCurrentScenario((prev) => prev + 1)
-      setSelectedChoice(null)
-      setShowFeedback(false)
-      setShowCapibaraTip(false)
-    }
-  }
-
-  const currentScene = scenarios[currentScenario]
-  const selectedChoiceData = currentScene.choices.find((c) => c.id === selectedChoice)
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-100 relative overflow-hidden">
-      {/* Animated jungle background */}
-      <div
-        className="absolute inset-0 opacity-30"
-        style={{
-          backgroundImage: `url('/jungle-campfire-night-scene-animated.png')`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-        }}
-      ></div>
-
-      <div className="relative z-10 max-w-4xl mx-auto p-6">
-        {/* Header */}
-        <Card className="mb-6 border-amber-200 bg-white/90 backdrop-blur-sm">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <MessageCircle className="w-8 h-8 text-amber-600" />
-                <div>
-                  <CardTitle className="text-2xl text-amber-800">Primeros Encuentros</CardTitle>
-                  <p className="text-amber-600">Aprende a hacer una primera impresión positiva</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <Badge className="bg-amber-500 text-white">
-                  <Star className="w-4 h-4 mr-1" />
-                  {totalPoints} puntos
-                </Badge>
-                <div className="text-4xl animate-bounce">🦫</div>
-              </div>
-            </div>
-            <Progress value={((currentScenario + 1) / scenarios.length) * 100} className="mt-4" />
-            <p className="text-sm text-amber-600">
-              Escenario {currentScenario + 1} de {scenarios.length}
-            </p>
-          </CardHeader>
-        </Card>
-
-        {/* Main scenario */}
-        <Card className="mb-6 border-amber-200 bg-white/95 backdrop-blur-sm">
-          <CardContent className="p-8">
-            <div className="mb-6">
-              <Badge variant="outline" className="mb-4 border-amber-300 text-amber-700">
-                {currentScene.character}
-              </Badge>
-              <h3 className="text-xl font-semibold text-amber-800 mb-4">{currentScene.situation}</h3>
-            </div>
-
-            {/* Choices */}
-            <div className="space-y-4">
-              {currentScene.choices.map((choice) => (
-                <Button
-                  key={choice.id}
-                  variant={selectedChoice === choice.id ? "default" : "outline"}
-                  className={`w-full text-left p-6 h-auto justify-start ${
-                    selectedChoice === choice.id
-                      ? "bg-amber-500 hover:bg-amber-600 text-white"
-                      : "border-amber-200 text-amber-800 hover:bg-amber-50"
-                  }`}
-                  onClick={() => handleChoiceSelect(choice)}
-                  disabled={showFeedback}
-                >
-                  <div className="flex items-start gap-3">
-                    <span className="font-bold text-lg">{choice.id.toUpperCase()})</span>
-                    <span className="text-base leading-relaxed">{choice.text}</span>
-                  </div>
-                </Button>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Feedback */}
-        {showFeedback && selectedChoiceData && (
-          <Card className="mb-6 border-green-200 bg-green-50/90 backdrop-blur-sm animate-in slide-in-from-bottom duration-500">
-            <CardContent className="p-6">
-              <div className="flex items-start gap-4">
-                <div className="text-3xl">
-                  {selectedChoiceData.points >= 80 ? "🎉" : selectedChoiceData.points >= 60 ? "👍" : "💭"}
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-semibold text-green-800 mb-2">+{selectedChoiceData.points} puntos</h4>
-                  <p className="text-green-700">{selectedChoiceData.feedback}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Capybara tip */}
-        {showCapibaraTip && selectedChoiceData && (
-          <Card className="mb-6 border-blue-200 bg-blue-50/90 backdrop-blur-sm animate-in slide-in-from-right duration-700">
-            <CardContent className="p-6">
-              <div className="flex items-start gap-4">
-                <div className="text-4xl animate-bounce">🦫</div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Lightbulb className="w-5 h-5 text-blue-600" />
-                    <h4 className="font-semibold text-blue-800">Consejo de Capi</h4>
-                  </div>
-                  <p className="text-blue-700">{selectedChoiceData.capibaraTip}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Next button */}
-        {showFeedback && (
-          <div className="text-center">
-            {currentScenario < scenarios.length - 1 ? (
-              <Button
-                onClick={nextScenario}
-                className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white px-8 py-3 text-lg"
-              >
-                Siguiente Escenario
-                <ArrowRight className="w-5 h-5 ml-2" />
-              </Button>
-            ) : (
-              <Button className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-8 py-3 text-lg">
-                ¡Completar Nivel!
-                <Star className="w-5 h-5 ml-2" />
-              </Button>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-</file>
-
 <file path="components/Leaderboard.tsx">
 "use client"
 import { useEffect, useState } from "react"
@@ -1250,14 +2166,14 @@ function Progress({
     <ProgressPrimitive.Root
       data-slot="progress"
       className={cn(
-        "bg-primary/20 relative h-2 w-full overflow-hidden rounded-full",
+        "bg-amber-400/20 relative h-2 w-full overflow-hidden rounded-full",
         className
       )}
       {...props}
     >
       <ProgressPrimitive.Indicator
         data-slot="progress-indicator"
-        className="bg-primary h-full w-full flex-1 transition-all"
+        className="bg-amber-800 h-full w-full flex-1 transition-all"
         style={{ transform: `translateX(-${100 - (value || 0)}%)` }}
       />
     </ProgressPrimitive.Root>
@@ -1427,6 +2343,137 @@ export const courses: Record<string, Level[]> = {
  * (por si quieres listarlos en una sola vista de roadmap)
  */
 export const allLevels: Level[] = Object.values(courses).flat()
+</file>
+
+<file path="lib/levels/index.ts">
+import { roleplayLevel1 } from "./roleplayLevel1"
+import { quizLevel1 } from "./quizLevel1"
+
+export const levelsMap: Record<number, any> = {
+  1: roleplayLevel1,
+  2: quizLevel1,
+}
+</file>
+
+<file path="lib/levels/quizLevel1.ts">
+// lib/levels/quizLevel1.ts
+export const quizLevel1 = {
+  id: 2,
+  title: "Presentaciones Efectivas",
+  type: "quiz" as const,
+  duration: 10,
+  xpReward: 60,
+  coinReward: 25,
+  background: "assets/worlds/montana.png",
+  story:
+    "Debes presentar tu proyecto ante el consejo de capibaras ancianas. Tu misión es demostrar claridad, seguridad y lograr que todos te entiendan.",
+  hint: "Una buena presentación engancha desde el inicio, es clara y termina con un llamado a la acción.",
+  steps: [
+    {
+      situation: "¿Cuál es la mejor manera de iniciar tu presentación?",
+      options: [
+        { text: "Con una historia breve relacionada al tema", correct: true, points: 20 },
+        { text: "Con estadísticas y datos duros", correct: false, points: 5 },
+        { text: "Disculpándome por posibles errores", correct: false, points: 0 },
+      ],
+      feedback: {
+        correct: "¡Excelente! Las historias capturan atención y crean conexión emocional inmediata.",
+        incorrect: "Las historias conectan emocionalmente desde el inicio y hacen tu mensaje memorable.",
+      },
+    },
+    {
+      situation: "Notas que el público se distrae. ¿Qué haces?",
+      options: [
+        { text: "Hago una pregunta directa o cambio el ritmo", correct: true, points: 20 },
+        { text: "Continúo como si nada pasara", correct: false, points: 0 },
+        { text: "Hablo más fuerte para captar atención", correct: false, points: 0 },
+      ],
+      feedback: {
+        correct: "¡Muy bien! Involucrar al público recupera su atención.",
+        incorrect: "Cuando pierdes atención, involucra al público con preguntas o cambios de ritmo.",
+      },
+    },
+  ],
+}
+</file>
+
+<file path="lib/levels/roleplayLevel1.ts">
+// lib/levels/roleplayLevel1.ts
+export const roleplayLevel1 = {
+  id: 1,
+  title: "Primeros Encuentros",
+  type: "roleplay" as const,
+  duration: 8,
+  xpReward: 50,
+  coinReward: 20,
+  background: "assets/worlds/selva.png",
+  story:
+    "Llegas a un campamento de capibaras exploradoras en medio de la selva. Es tu primer día y necesitas presentarte al grupo. Tu objetivo es causar una buena primera impresión.",
+  hint:
+    "Recuerda: una sonrisa genuina y mostrar interés por los demás son claves universales para conectar.",
+  steps: [
+    {
+      situation: "¿Cómo saludarás a una capibara desconocida que se acerca a ti?",
+      options: [
+        { text: "Con una sonrisa cálida y contacto visual directo", correct: true, points: 20 },
+        { text: "Con un saludo rápido sin mirar mucho", correct: false, points: 0 },
+        { text: "Esperando a que ella hable primero", correct: false, points: 0 },
+      ],
+      feedback: {
+        correct: "¡Excelente! El contacto visual y la sonrisa genuina transmiten confianza y apertura.",
+        incorrect: "Una sonrisa cálida y contacto visual directo son fundamentales para una buena primera impresión.",
+      },
+    },
+    {
+      situation: "Durante la conversación, ¿mantienes contacto visual?",
+      options: [
+        { text: "Sí, de manera natural y respetuosa", correct: true, points: 20 },
+        { text: "No, me da pena mirar a los ojos", correct: false, points: 0 },
+        { text: "Solo cuando hablo yo", correct: false, points: 5 },
+      ],
+      feedback: {
+        correct: "Perfecto. El contacto visual muestra interés genuino y construye confianza.",
+        incorrect: "El contacto visual natural (no fijo) demuestra respeto e interés por la otra persona.",
+      },
+    },
+    {
+      situation: "El interlocutor responde de manera tímida. ¿Qué haces?",
+      options: [
+        { text: "Le doy espacio y hablo más suave", correct: true, points: 20 },
+        { text: "Trato de animarlo hablando más fuerte", correct: false, points: 0 },
+        { text: "Cambio de tema inmediatamente", correct: false, points: 0 },
+      ],
+      feedback: {
+        correct: "¡Muy bien! Adaptar tu energía a la del otro muestra inteligencia emocional.",
+        incorrect: "Cuando alguien es tímido, es mejor bajar la intensidad y darle espacio para abrirse.",
+      },
+    },
+    {
+      situation: "Una capibara te ofrece la mano para saludar. ¿Qué tipo de apretón usas?",
+      options: [
+        { text: "Firme pero no excesivo, con contacto visual", correct: true, points: 20 },
+        { text: "Muy suave, casi sin fuerza", correct: false, points: 0 },
+        { text: "Muy fuerte para mostrar seguridad", correct: false, points: 0 },
+      ],
+      feedback: {
+        correct: "Excelente. Un apretón firme pero respetuoso transmite confianza sin intimidar.",
+        incorrect: "Un apretón de manos debe ser firme pero no excesivo, acompañado de contacto visual.",
+      },
+    },
+    {
+      situation: "Te presentan al grupo. ¿Cómo te presentas?",
+      options: [
+        { text: "Digo mi nombre y algo que me gusta hacer", correct: true, points: 20 },
+        { text: "Solo digo mi nombre", correct: false, points: 5 },
+        { text: "Hago una broma para romper el hielo", correct: false, points: 0 },
+      ],
+      feedback: {
+        correct: "¡Perfecto! Compartir un interés personal ayuda a otros a conectar contigo.",
+        incorrect: "Agregar algo personal (un interés o pasión) ayuda a crear conexiones más profundas.",
+      },
+    },
+  ],
+}
 </file>
 
 <file path="lib/progress.ts">
@@ -1662,260 +2709,6 @@ export default function RootLayout({
 }
 </file>
 
-<file path="app/level/[id]/page.tsx">
-"use client"
-import { useRouter } from "next/navigation"
-import RoleplayLevel from "@/components/RoleplayLevel"
-import QuizLevel from "@/components/QuizLevel"
-
-interface LevelPageProps {
-  params: {
-    id: string
-  }
-}
-
-export default function LevelPage({ params }: LevelPageProps) {
-  const router = useRouter()
-  const levelId = Number.parseInt(params.id)
-
-  // Determinar el tipo de nivel basado en el ID
-// app/level/[id]/page.tsx
-const getLevelType = (id: number) => {
-  if (id === 1) return "roleplay"
-  return "quiz" // el resto como quiz
-}
-  const levelType = getLevelType(levelId)
-
-  const handleComplete = (score: number, badges: string[]) => {
-    // Aquí guardarías el progreso en localStorage o base de datos
-    console.log(`Level ${levelId} completed with score: ${score}, badges: ${badges}`)
-    router.push("/")
-  }
-
-  const handleExit = () => {
-    router.push("/")
-  }
-
-  if (levelType === "roleplay") {
-    return <RoleplayLevel levelId={levelId} onComplete={handleComplete} onExit={handleExit} />
-  }
-
-  if (levelType === "quiz") {
-    return <QuizLevel levelId={levelId} onComplete={handleComplete} onExit={handleExit} />
-  }
-
-  // Placeholder para otros tipos de niveles
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 p-4 flex items-center justify-center">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold mb-4">Nivel {levelId}</h1>
-        <p className="text-muted-foreground mb-4">Tipo: {levelType}</p>
-        <p className="text-sm text-muted-foreground">Este tipo de nivel estará disponible pronto</p>
-      </div>
-    </div>
-  )
-}
-</file>
-
-<file path="components/RoleplayLevel.tsx">
-"use client"
-
-import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { Star, Zap, Heart, MessageCircle, Trophy, ArrowLeft } from "lucide-react"
-import { levelBackgrounds } from "@/lib/levelBackgrounds"
-
-// 👇 tipos de datos
-interface Choice {
-  text: string
-  points: number
-  principle: string
-  nextScene: number
-  feedback: string
-}
-
-interface Scene {
-  id: number
-  title: string
-  description: string
-  capibaraExpression: string
-  situation: string
-  choices: Choice[]
-}
-
-interface RoleplayLevelProps {
-  levelId: number
-  world: "selva" | "montana" | "rio" | "mercado" | "ciudad"
-  onComplete: (score: number, badges: string[]) => void
-  onExit: () => void
-}
-
-// 👇 aquí usas tus escenas
-const communicationScenes: Scene[] = [
-  {
-    id: 1,
-    title: "🌿 Primer Encuentro",
-    description: "Llegas a un campamento de capibaras exploradoras...",
-    capibaraExpression: "🙂",
-    situation: "Situación: Es tu primer día y necesitas presentarte al grupo.",
-    choices: [
-      {
-        text: "Con una sonrisa cálida y contacto visual directo",
-        points: 20,
-        principle: "Empatía",
-        nextScene: 2,
-        feedback: "¡Excelente! Mostraste apertura y calidez.",
-      },
-      {
-        text: "Con un saludo rápido sin mirar mucho",
-        points: 5,
-        principle: "Pasividad",
-        nextScene: 2,
-        feedback: "Podría ser mejor, faltó conexión.",
-      },
-      {
-        text: "Esperando a que ella hable primero",
-        points: 2,
-        principle: "Inseguridad",
-        nextScene: 2,
-        feedback: "Oportunidad perdida, deberías tomar la iniciativa.",
-      },
-    ],
-  },
-  {
-    id: 2,
-    title: "🎯 Fin del nivel",
-    description: "Has terminado este roleplay de prueba.",
-    capibaraExpression: "🤗",
-    situation: "¡Felicidades! Completaste el nivel.",
-    choices: [],
-  },
-]
-
-// 👇 insignias de ejemplo
-const badges = [
-  { name: "Empático", threshold: 20, icon: Heart },
-  { name: "Comunicador", threshold: 30, icon: MessageCircle },
-]
-
-export default function RoleplayLevel({
-  levelId,
-  world,
-  onComplete,
-  onExit,
-}: RoleplayLevelProps) {
-  const [currentScene, setCurrentScene] = useState(1)
-  const [score, setScore] = useState(0)
-  const [earnedBadges, setEarnedBadges] = useState<string[]>([])
-  const [showFeedback, setShowFeedback] = useState(false)
-  const [lastChoice, setLastChoice] = useState<Choice | null>(null)
-
-  const scene = communicationScenes.find((s) => s.id === currentScene)
-  const backgroundImage = levelBackgrounds[world] || levelBackgrounds["selva"]
-
-  const makeChoice = (choiceIndex: number) => {
-    if (!scene) return
-    const choice = scene.choices[choiceIndex]
-    const newScore = score + choice.points
-
-    setLastChoice(choice)
-    setShowFeedback(true)
-    setScore(newScore)
-
-    // otorgar badges
-    const newBadges = badges
-      .filter((badge) => newScore >= badge.threshold && !earnedBadges.includes(badge.name))
-      .map((badge) => badge.name)
-
-    if (newBadges.length > 0) {
-      setEarnedBadges([...earnedBadges, ...newBadges])
-    }
-
-    setTimeout(() => {
-      setShowFeedback(false)
-      if (choice.nextScene === 2) {
-        onComplete(newScore, [...earnedBadges, ...newBadges])
-      } else {
-        setCurrentScene(choice.nextScene)
-      }
-    }, 2000)
-  }
-
-  if (!scene) return null
-
-  // vista de feedback
-  if (showFeedback && lastChoice) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white/80">
-        <Card className="max-w-lg w-full animate-bounce-in">
-          <CardContent className="p-6 text-center">
-            <div className="text-5xl mb-4">✨</div>
-            <h3 className="text-xl font-bold mb-2">¡Tu elección!</h3>
-            <p className="mb-2">+{lastChoice.points} puntos</p>
-            <Badge>{lastChoice.principle}</Badge>
-            <p className="text-sm mt-2">{lastChoice.feedback}</p>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
-  // vista normal
-  return (
-    <div
-      className="min-h-screen bg-cover bg-center bg-no-repeat relative"
-      style={{ backgroundImage: `url(${backgroundImage})` }}
-    >
-      <div className="absolute inset-0 bg-black/20"></div>
-
-      <div className="relative z-10 max-w-4xl mx-auto py-8 space-y-6">
-        {/* Header */}
-        <Card className="bg-white/80">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <Button variant="ghost" onClick={onExit}>
-                <ArrowLeft className="w-4 h-4 mr-2" /> Salir
-              </Button>
-              <div className="flex items-center gap-4">
-                <Star className="w-5 h-5 text-yellow-500" />
-                <span className="font-bold">{score} pts</span>
-              </div>
-            </div>
-            <Progress value={(currentScene / communicationScenes.length) * 100} />
-          </CardHeader>
-        </Card>
-
-        {/* Escena */}
-        <Card>
-          <CardHeader>
-            <CardTitle>{scene.title}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="mb-4">{scene.description}</p>
-            <div className="text-6xl mb-4">{scene.capibaraExpression}</div>
-            <p className="italic mb-6">{scene.situation}</p>
-
-            {/* Opciones */}
-            {scene.choices.map((choice, index) => (
-              <Button
-                key={index}
-                onClick={() => makeChoice(index)}
-                className="w-full mb-3"
-              >
-                {choice.text}
-              </Button>
-            ))}
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  )
-}
-</file>
-
 <file path="hooks/useSound.tsx">
 // hooks/useSound.ts
 import { useCallback } from "react"
@@ -2039,367 +2832,115 @@ export interface Level {
 }
 </file>
 
-<file path="components/AssessmentEngine.tsx">
+<file path="app/level/[id]/page.tsx">
 "use client"
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
-import { Heart, Lightbulb, Award, Star } from "lucide-react"
+import { useRouter } from "next/navigation"
+import LevelComponent from "@/components/LevelComponent"
+import { Level, UserData } from "@/lib/userTypes"
+import { useState } from "react"
 
-interface AssessmentItem {
-  id: string
-  question: string
-  options: {
-    text: string
-    correct: boolean
-    points: number
-  }[]
-  feedback: {
-    correct: string
-    incorrect: string
-  }
-  hint?: string
+// 🔹 Definición de niveles de ejemplo (puedes moverlo a un lib si quieres)
+const communicationLevels: Level[] = [
+  {
+    id: 1,
+    title: "Primeros Encuentros",
+    type: "roleplay",
+    duration: 8,
+    xpReward: 50,
+    coinReward: 20,
+    isCompleted: false,
+    isUnlocked: true,
+    world: "selva",
+  },
+  {
+    id: 2,
+    title: "Escucha Activa",
+    type: "quiz",
+    duration: 6,
+    xpReward: 40,
+    coinReward: 15,
+    isCompleted: false,
+    isUnlocked: true,
+    world: "montana",
+  },
+]
+
+// 🔹 Datos iniciales del usuario (puedes reemplazar con Firestore si ya tienes auth)
+const initialUserData: UserData = {
+  level: 1,
+  xp: 0,
+  coins: 100,
+  gems: 5,
+  lives: 5,
+  maxLives: 5,
+  lastDailyChest: null,
+  completedLevels: [],
+  badges: [],
+  currentPet: "baby-capybara",
+  unlockedPets: ["baby-capybara"],
 }
 
-interface AssessmentLevel {
-  id: string
-  title: string
-  type: "roleplay" | "quiz" | "story" | "interactive"
-  hasContinuity: boolean
-  items: AssessmentItem[]
-  background?: string
-  story?: string
-}
-
-interface AssessmentEngineProps {
-  level: AssessmentLevel
-  userData: any
-  onComplete: (result: AssessmentResult) => void
-  onBack: () => void
-  onLoseLife: () => void
-}
-
-interface AssessmentResult {
-  score: number
-  mistakes: number
-  firstTryCorrect: number
-  medal: "platinum" | "gold" | "silver"
-  timeMs: number
-}
-
-export default function AssessmentEngine({ level, userData, onComplete, onBack, onLoseLife }: AssessmentEngineProps) {
-  const [currentIndex, setCurrentIndex] = useState(0)
-  const [selectedOption, setSelectedOption] = useState<number | null>(null)
-  const [showFeedback, setShowFeedback] = useState(false)
-  const [score, setScore] = useState(0)
-  const [mistakes, setMistakes] = useState(0)
-  const [firstTryCorrect, setFirstTryCorrect] = useState(0)
-  const [retryQueue, setRetryQueue] = useState<AssessmentItem[]>([])
-  const [isRetryRound, setIsRetryRound] = useState(false)
-  const [hintUsed, setHintUsed] = useState(false)
-  const [startTime] = useState(Date.now())
-  const [attemptedItems, setAttemptedItems] = useState<Set<string>>(new Set())
-  const [shuffledItems, setShuffledItems] = useState<AssessmentItem[]>([])
-  const isRoleplay = level.type === "roleplay"
-
-  const petDataMap: Record<"baby-capybara" | "adult-capybara" | "golden-capybara" | "ninja-capybara", { icon: string; name: string }> = {
-    "baby-capybara": { icon: "🐹", name: "Capi Bebé" },
-    "adult-capybara": { icon: "🦫", name: "Capi Adulto" },
-    "golden-capybara": { icon: "✨🦫", name: "Capi Dorado" },
-    "ninja-capybara": { icon: "🥷🦫", name: "Capi Ninja" },
-  }
-  const petData = petDataMap[userData.currentPet as keyof typeof petDataMap] || { icon: "🐹", name: "Capi Bebé" }
-
-  // Initialize shuffled items for quiz levels
-  useEffect(() => {
-    if (!level.hasContinuity) {
-      // Shuffle items with stable seed for resume capability
-      const shuffled = [...level.items].sort(() => Math.random() - 0.5)
-      setShuffledItems(shuffled)
-    } else {
-      setShuffledItems(level.items)
-    }
-  }, [level])
-
-  const currentItems = isRetryRound ? retryQueue : shuffledItems
-  const currentItem = currentItems[currentIndex]
-
-  const calculateMedal = (mistakeCount: number): "platinum" | "gold" | "silver" => {
-    if (mistakeCount === 0) return "platinum"
-    if (mistakeCount <= 2) return "gold"
-    return "silver"
-  }
-
-  const handleOptionSelect = (optionIndex: number) => {
-  setSelectedOption(optionIndex)
-  const option = currentItem.options[optionIndex]
-  const isFirstTry = !attemptedItems.has(currentItem.id)
-
-  if (option.correct) {
-    const points = isFirstTry ? option.points + 25 : option.points
-    setScore((prev) => prev + points)
-    if (isFirstTry) setFirstTryCorrect((prev) => prev + 1)
-    if (isRetryRound) {
-      // Saca del retryQueue si era de revisión
-      setRetryQueue((prev) => prev.filter((item) => item.id !== currentItem.id))
-    }
-  } else {
-    setMistakes((prev) => prev + 1)
-    setScore((prev) => prev - 50)
-    onLoseLife()
-    setAttemptedItems((prev) => new Set(prev).add(currentItem.id))
-
-    // SOLO los quizzes se revisan al final
-    if (!isRoleplay && !isRetryRound) {
-      setRetryQueue((prev) => prev.find((i) => i.id === currentItem.id) ? prev : [...prev, currentItem])
-    }
-  }
-
-  setShowFeedback(true)
-}
-
-// Reemplaza handleNext:
-const handleNext = () => {
-  const option = currentItem.options[selectedOption!]
-
-  if (isRoleplay) {
-    // Roleplay: reintento inmediato hasta acertar
-    if (option.correct) {
-      if (currentIndex < currentItems.length - 1) {
-        setCurrentIndex((prev) => prev + 1)
-        resetForNextItem()
-      } else {
-        completeAssessment()
-      }
-    } else {
-      // Reintentar esta misma
-      resetForNextItem()
-    }
-    return
-  }
-
-  // Quiz:
-  if (!isRetryRound) {
-    // Primera pasada: AVANZAR SIEMPRE, haya sido correcto o no
-    if (currentIndex < currentItems.length - 1) {
-      setCurrentIndex((prev) => prev + 1)
-      resetForNextItem()
-    } else {
-      // Primera pasada terminada → ver si hay revisión
-      if (retryQueue.length > 0) {
-        setIsRetryRound(true)
-        setCurrentIndex(0)
-        resetForNextItem()
-      } else {
-        completeAssessment()
-      }
-    }
-  } else {
-    // En revisión: quedarse hasta acertar
-    if (option.correct) {
-      if (retryQueue.filter((item) => item.id !== currentItem.id).length === 0) {
-        completeAssessment()
-      } else {
-        setCurrentIndex(0) // volvemos al inicio de la cola que queda
-        resetForNextItem()
-      }
-    } else {
-      // Reintentar esta misma
-      resetForNextItem()
-    }
+interface LevelPageProps {
+  params: {
+    id: string
   }
 }
 
-  const resetForNextItem = () => {
-    setSelectedOption(null)
-    setShowFeedback(false)
-    setHintUsed(false)
-  }
+export default function LevelPage({ params }: LevelPageProps) {
+  const router = useRouter()
+  const levelId = Number.parseInt(params.id)
+  const level = communicationLevels.find((lvl) => lvl.id === levelId)
 
-  const completeAssessment = () => {
-    const timeMs = Date.now() - startTime
-    const medal = calculateMedal(mistakes)
+  const [userData, setUserData] = useState<UserData>(initialUserData)
 
-    const result: AssessmentResult = {
-      score,
-      mistakes,
-      firstTryCorrect,
-      medal,
-      timeMs,
-    }
-
-    onComplete(result)
-  }
-
-  const showHint = () => {
-    if (!hintUsed && currentItem.hint) {
-      setHintUsed(true)
-    }
-  }
-
-  const getMedalIcon = (medal: string) => {
-    switch (medal) {
-      case "platinum":
-        return <Award className="w-5 h-5 text-blue-500" />
-      case "gold":
-        return <Award className="w-5 h-5 text-yellow-500" />
-      case "silver":
-        return <Award className="w-5 h-5 text-gray-400" />
-      default:
-        return <Star className="w-5 h-5 text-gray-300" />
-    }
-  }
-
-  if (!currentItem) {
+  if (!level) {
     return (
-      <div className="max-w-4xl mx-auto p-6 text-center">
-        <h2 className="text-2xl font-bold mb-4">Cargando...</h2>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Nivel no encontrado</h1>
+          <button
+            onClick={() => router.push("/")}
+            className="bg-amber-500 hover:bg-amber-600 text-white px-6 py-2 rounded-lg shadow-md"
+          >
+            ← Volver al inicio
+          </button>
+        </div>
       </div>
     )
   }
 
-  return (
-    <div className="max-w-4xl mx-auto">
-      <div className="flex items-center gap-4 mb-6">
-        <Button variant="outline" onClick={onBack} className="border-amber-300 text-amber-700 bg-transparent">
-          ← Volver al curso
-        </Button>
-        <h1 className="text-2xl font-bold text-amber-800">{level.title}</h1>
-        <div className="text-3xl animate-bounce">{petData.icon}</div>
-        <div className="flex items-center gap-4 ml-auto">
-          <div className="flex items-center gap-2">
-            <Heart className="w-5 h-5 text-red-500" />
-            <span className="font-bold text-red-600">
-              {userData.lives}/{userData.maxLives}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            {getMedalIcon(calculateMedal(mistakes))}
-            <span className="text-sm text-gray-600">
-              {mistakes === 0 ? "Platino" : mistakes <= 2 ? "Oro" : "Plata"}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <Card className="relative overflow-hidden border-2 border-amber-300">
-        {level.background && (
-          <div
-            className="absolute inset-0 opacity-20"
-            style={{
-              backgroundImage: `url('${level.background}')`,
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-            }}
-          />
-        )}
-
-        <CardContent className="p-8 relative z-10">
-          <div className="mb-2 flex items-center justify-between">
-  <span className="text-sm font-medium text-amber-800">Progreso</span>
-  <span className="text-xs text-amber-700">
-    {isRetryRound && level.type === "quiz"
-      ? "Corrigiendo errores"
-      : `${currentIndex + 1} / ${currentItems.length}`}
-  </span>
-</div>
-
-<Progress
-  className="h-2"
-  value={
-    isRetryRound && level.type === "quiz"
-      ? 100
-      : Math.round(((currentIndex + 1) / Math.max(1, currentItems.length)) * 100)
+  const handleComplete = (xp: number, coins: number, badges: string[]) => {
+    setUserData((prev) => ({
+      ...prev,
+      xp: prev.xp + xp,
+      coins: prev.coins + coins,
+      completedLevels: [...prev.completedLevels, level.id],
+      badges: [...prev.badges, ...badges],
+    }))
+    router.push("/") // 👈 al completar, regresa al inicio (puedes cambiarlo a dashboard)
   }
+
+  const handleBack = () => {
+    router.push("/") // 👈 salir sin completar
+  }
+
+  const handleLoseLife = () => {
+    setUserData((prev) => ({
+      ...prev,
+      lives: Math.max(0, prev.lives - 1),
+    }))
+  }
+
+  return (
+    <LevelComponent
+  levelId={level.id}             // antes tenías level={level}
+  type={level.type}              // agregamos el tipo para que sepa si es roleplay o quiz
+  userData={userData}
+  onComplete={handleComplete}
+  onBack={handleBack}
+  onLoseLife={handleLoseLife}
 />
-          {currentIndex === 0 && level.story && !isRetryRound && (
-            <div className="mb-6 p-4 bg-amber-50 rounded-lg border border-amber-200">
-              <p className="text-amber-800">{level.story}</p>
-            </div>
-          )}
-
-          <div className="mb-6 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="text-4xl">{petData.icon}</div>
-              <div>
-                <p className="text-sm text-amber-600">{petData.name} está aquí para ayudarte</p>
-                {hintUsed && currentItem.hint && (
-                  <div className="mt-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                    <p className="text-blue-800 text-sm">💡 {currentItem.hint}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-            {currentItem.hint && (
-              <Button
-                onClick={showHint}
-                disabled={hintUsed}
-                variant="outline"
-                size="sm"
-                className="border-blue-300 text-blue-700 bg-transparent"
-              >
-                <Lightbulb className="w-4 h-4 mr-2" />
-                {hintUsed ? "Pista usada" : "Pedir pista"}
-              </Button>
-            )}
-          </div>
-
-          <div className="mb-6">
-            <h3 className="text-xl font-semibold mb-4 text-amber-800">{currentItem.question}</h3>
-            <div className="space-y-3">
-              {currentItem.options.map((option, index) => (
-                <Button
-                  key={index}
-                  onClick={() => handleOptionSelect(index)}
-                  disabled={showFeedback}
-                  variant={selectedOption === index ? "default" : "outline"}
-                  className={`w-full text-left justify-start p-4 h-auto ${
-                    selectedOption === index
-                      ? option.correct
-                        ? "bg-green-500 hover:bg-green-600 text-white border-green-600"
-                        : "bg-red-500 hover:bg-red-600 text-white border-red-600"
-                      : "border-amber-300 text-amber-700 hover:bg-amber-50"
-                  }`}
-                >
-                  {option.text}
-                </Button>
-              ))}
-            </div>
-          </div>
-
-          {showFeedback && (
-            <div
-              className={`mb-6 p-4 rounded-lg border ${
-                currentItem.options[selectedOption!].correct
-                  ? "bg-green-50 border-green-200"
-                  : "bg-red-50 border-red-200"
-              }`}
-            >
-              <p
-                className={`font-medium ${
-                  currentItem.options[selectedOption!].correct ? "text-green-800" : "text-red-800"
-                }`}
-              >
-                {currentItem.options[selectedOption!].correct
-                  ? currentItem.feedback.correct
-                  : currentItem.feedback.incorrect}
-              </p>
-              <Button onClick={handleNext} className="mt-4 bg-amber-500 hover:bg-amber-600 text-white">
-                {selectedOption != null && currentItem.options[selectedOption].correct
-              
-                  ? (isRetryRound && retryQueue.filter((item) => item.id !== currentItem.id).length === 0) ||
-                    (!isRetryRound && currentIndex === currentItems.length - 1 && retryQueue.length === 0)
-                    ? "Completar nivel"
-                    : "Siguiente"
-                  : "Intentar de nuevo"}
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
   )
 }
 </file>
@@ -2585,441 +3126,309 @@ export { Button, buttonVariants }
 <file path="components/LevelComponent.tsx">
 "use client"
 
-
-import QuizLevel from "@/components/QuizLevel"
-import RoleplayLevel from "@/components/RoleplayLevel"
-import { Level, UserData } from "@/lib/userTypes"
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { Progress } from "@/components/ui/progress"
+import { Heart, Lightbulb } from "lucide-react"
+import { launchConfetti } from "@/lib/confetti"
+import { UserData, pets } from "@/lib/userTypes"
+import useSound from "@/hooks/useSound"
+import { roleplayLevel1 } from "@/lib/levels/roleplayLevel1"
+import { quizLevel1 } from "../lib/levels/quizLevel1"
 
 interface LevelComponentProps {
-  level: Level
+  levelId: number
+  type: "roleplay" | "quiz" | "story" | "video" | "interactive"
   userData: UserData
-  onComplete: (xp: number, coins: number, badges: string[]) => void
   onBack: () => void
   onLoseLife: () => void
+  onComplete: (xp: number, coins: number, badges: string[]) => void
 }
 
-/**
- * LevelComponent se encarga de cargar el tipo de nivel correcto
- * (quiz o roleplay) y pasarle las props necesarias.
- */
-
-
 export default function LevelComponent({
-  level,
-  onComplete,
-  onBack,
+  levelId,
+  type,
   userData,
+  onBack,
   onLoseLife,
-}: {
-  level: Level
-  onComplete: (xp: number, coins: number, badges: string[]) => void   // ✅ bien
-  onBack: () => void
-  userData: UserData
-  onLoseLife: () => void
-}) {
+  onComplete,
+}: LevelComponentProps) {
+  // 🔹 sonidos globales
+  const playClick = useSound("/sounds/click.mp3")
+  const playSuccess = useSound("/sounds/success.mp3")
+  const playSuccess2 = useSound("/sounds/success2.mp3")
+  const playFail = useSound("/sounds/fail.mp3")
 
-  if (level.type === "roleplay") {
-    return (
-      <RoleplayLevel
-        levelId={level.id}
-        world={level.world}
-        userData={userData}
-        onComplete={onComplete}
-        onExit={onBack}
-        onLoseLife={onLoseLife}
-      />
-    )
-  }
+  // 🔹 estado global del nivel
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [selectedOption, setSelectedOption] = useState<number | null>(null)
+  const [showFeedback, setShowFeedback] = useState(false)
+  const [isCorrect, setIsCorrect] = useState<boolean | null>(null)
+  const [score, setScore] = useState(0)
+  const [hintUsed, setHintUsed] = useState(false)
+  const [retryQueue, setRetryQueue] = useState<number[]>([])
+  const [retryPos, setRetryPos] = useState(0)
+  const [pass, setPass] = useState<"first" | "retry">("first")
 
-  // Placeholder para otros tipos (story, video, interactive)
+  // 🔹 mascota activa
+  const currentPet = pets.find((p) => p.id === userData.currentPet)
+
+  // 🔹 obtener contenido del nivel (ejemplo con roleplayLevel1)
+ const levelsMap: Record<number, any> = {
+  1: roleplayLevel1,
+  2: quizLevel1,
+  // 👆 aquí vas metiendo más niveles a medida que los crees
+}
+
+// escoger nivel según levelId
+const levelData = levelsMap[levelId]
+
+if (!levelData) {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-pink-50">
-      <div className="text-center p-8 bg-white/80 rounded-2xl shadow-md">
-        <h1 className="text-2xl font-bold mb-4">Nivel {level.id}</h1>
-        <p className="text-muted-foreground mb-4">Tipo: {level.type}</p>
-        <p className="text-sm text-muted-foreground">
-          Este tipo de nivel estará disponible pronto 🚧
-        </p>
-        <button
-          onClick={onBack}
-          className="mt-6 bg-amber-500 hover:bg-amber-600 text-white px-6 py-2 rounded-lg shadow-md"
-        >
-          ← Volver
-        </button>
-      </div>
+    <div className="p-6 text-center">
+      <h2 className="text-xl font-bold mb-2">Nivel en construcción</h2>
+      <Button onClick={onBack}>← Volver</Button>
     </div>
   )
 }
-</file>
 
-<file path="components/QuizLevel.tsx">
-"use client"
+  // --- helpers ---
+  const stepIndex = pass === "first" ? currentIndex : retryQueue[retryPos]
+  const currentStep = levelData.steps[stepIndex]
 
-import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { Star, ArrowLeft, Brain, Target } from "lucide-react"
-import { levelBackgrounds } from "@/lib/levelBackgrounds"
-
-interface QuizQuestion {
-  id: number
-  question: string
-  options: string[]
-  correctAnswer: number
-  explanation: string
-  points: number
-  category: string
-}
-
-interface QuizLevelProps {
-  levelId: number
-  world: "selva" | "montana" | "rio" | "mercado" | "ciudad"
-  xpReward: number
-  coinReward: number
-  onComplete: (xp: number, coins: number) => void
-  onBack: () => void
-  userData: UserData
-  onLoseLife: () => void
-}
-
-const quizQuestions: QuizQuestion[] = [
-  {
-    id: 1,
-    question: "¿Cuál es el principio más importante para establecer rapport en una primera conversación?",
-    options: [
-      "Hablar sobre tus logros profesionales",
-      "Encontrar puntos en común y mostrar interés genuino",
-      "Hacer preguntas directas sobre el trabajo",
-      "Mantener una postura dominante",
-    ],
-    correctAnswer: 1,
-    explanation:
-      "El rapport se construye encontrando conexiones genuinas y mostrando interés real en la otra persona. Esto activa el principio de simpatía de Cialdini.",
-    points: 20,
-    category: "Construcción de Rapport",
-  },
-  {
-    id: 2,
-    question: "Cuando alguien comparte un problema contigo, ¿cuál es la mejor respuesta inicial?",
-    options: [
-      "Ofrecer una solución inmediata",
-      "Cambiar de tema para aliviar la tensión",
-      "Validar sus sentimientos y hacer preguntas para entender mejor",
-      "Contar una experiencia similar tuya",
-    ],
-    correctAnswer: 2,
-    explanation:
-      "La escucha activa requiere primero validar los sentimientos de la persona y buscar entender completamente antes de ofrecer soluciones.",
-    points: 25,
-    category: "Escucha Activa",
-  },
-  {
-    id: 3,
-    question: "¿Qué porcentaje de la comunicación se transmite a través del lenguaje corporal?",
-    options: ["25%", "40%", "55%", "70%"],
-    correctAnswer: 2,
-    explanation:
-      "Según Albert Mehrabian, el 55% de la comunicación es lenguaje corporal, 38% tono de voz y solo 7% palabras. El lenguaje no verbal es crucial.",
-    points: 15,
-    category: "Comunicación No Verbal",
-  },
-  {
-    id: 4,
-    question: "En una situación de conflicto, ¿cuál es la estrategia más efectiva?",
-    options: [
-      "Defender tu posición firmemente",
-      "Evitar el conflicto completamente",
-      "Buscar entender la perspectiva del otro antes de responder",
-      "Usar tu autoridad para resolver rápidamente",
-    ],
-    correctAnswer: 2,
-    explanation:
-      "La resolución efectiva de conflictos comienza con la comprensión empática. Esto reduce la defensividad y abre espacio para soluciones colaborativas.",
-    points: 30,
-    category: "Resolución de Conflictos",
-  },
-  {
-    id: 5,
-    question: "¿Cuál es la técnica más efectiva para dar feedback constructivo?",
-    options: [
-      "Sandwich: positivo-negativo-positivo",
-      "Ser directo y honesto sin rodeos",
-      "SBI: Situación-Comportamiento-Impacto + pregunta abierta",
-      "Esperar a la evaluación anual",
-    ],
-    correctAnswer: 2,
-    explanation:
-      "El modelo SBI (Situación-Comportamiento-Impacto) es más efectivo porque es específico, observable y se enfoca en comportamientos modificables, no en la persona.",
-    points: 25,
-    category: "Feedback Efectivo",
-  },
-  {
-    id: 6,
-    question: "¿Qué hace que una presentación sea más persuasiva?",
-    options: [
-      "Muchos datos y estadísticas",
-      "Historias que conecten emocionalmente + datos de apoyo",
-      "Hablar rápido para cubrir más contenido",
-      "Usar jerga técnica para mostrar expertise",
-    ],
-    correctAnswer: 1,
-    explanation:
-      "Las historias activan múltiples áreas del cerebro y crean conexión emocional, mientras que los datos proporcionan respaldo lógico. La combinación es poderosa.",
-    points: 20,
-    category: "Presentaciones",
-  },
-]
-
-export default function QuizLevel({ levelId, world, onComplete, onBack }: QuizLevelProps) {
-  const [currentQuestion, setCurrentQuestion] = useState(0)
-  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null)
-  const [showResult, setShowResult] = useState(false)
-  const [score, setScore] = useState(0)
-  const [correctAnswers, setCorrectAnswers] = useState(0)
-  const [answers, setAnswers] = useState<number[]>([])
-  const [retryQueue, setRetryQueue] = useState<number[]>([])
-  const [wrongQueue, setWrongQueue] = useState<number[]>([])
-  const [mode, setMode] = useState<"first" | "review">("first")
-  const [reviewPos, setReviewPos] = useState(0)
-
-  const backgroundImage = levelBackgrounds[world] || levelBackgrounds["selva"]
-
-  const getIndex = () => (mode === "first" ? currentQuestion : wrongQueue[reviewPos])
-  const question = quizQuestions[getIndex()]
-  const isLastInFirstPass = currentQuestion === quizQuestions.length - 1
-  const isLastQuestion =
-    mode === "first"
-      ? currentQuestion === quizQuestions.length - 1
-      : reviewPos === wrongQueue.length - 1
-
-  const handleAnswerSelect = (answerIndex: number) => {
-    setSelectedAnswer(answerIndex)
+  const pushWrongOnce = (idx: number) => {
+    setRetryQueue((prev) => (prev.includes(idx) ? prev : [...prev, idx]))
   }
 
-  const handleNextQuestion = () => {
-    if (selectedAnswer === null) return
-    const isCorrect = selectedAnswer === question.correctAnswer
+  const resetForNext = () => {
+    setSelectedOption(null)
+    setShowFeedback(false)
+    setIsCorrect(null)
+  }
 
-    if (isCorrect) {
-      setScore((s) => s + question.points)
-      setCorrectAnswers((c) => c + 1)
-    } else if (mode === "first") {
-      setWrongQueue((prev) => (prev.includes(getIndex()) ? prev : [...prev, getIndex()]))
+  const handleOption = (i: number) => {
+    setSelectedOption(i)
+    const option = currentStep.options[i]
+
+    if (type === "roleplay") {
+      // retry inmediato
+      if (option.correct) {
+        playSuccess2()
+        setScore((s) => s + option.points)
+        setIsCorrect(true)
+      } else {
+        playFail()
+        setIsCorrect(false)
+        onLoseLife()
+      }
+      setShowFeedback(true)
+      return
     }
 
-    setShowResult(true)
+    // quiz: agenda para retry
+    if (option.correct) {
+      playSuccess2()
+      setScore((s) => s + option.points)
+      setIsCorrect(true)
+    } else {
+      playFail()
+      pushWrongOnce(stepIndex)
+      setIsCorrect(false)
+      onLoseLife()
+    }
+    setShowFeedback(true)
+  }
 
-    setTimeout(() => {
-      if (mode === "first") {
-        if (isLastInFirstPass) {
-          if (wrongQueue.length > 0 || !isCorrect) {
-            const finalQueue = isCorrect ? wrongQueue : [...wrongQueue, getIndex()]
-            setWrongQueue(Array.from(new Set(finalQueue)))
-            setMode("review")
-            setReviewPos(0)
-            setSelectedAnswer(null)
-            setShowResult(false)
-          } else {
-            const finalScore = isCorrect ? score + question.points : score
-            const badges: string[] = []
-            if (correctAnswers + (isCorrect ? 1 : 0) === quizQuestions.length) badges.push("Perfeccionista")
-            if (finalScore >= 120) badges.push("Experto en Comunicación")
-            if (correctAnswers + (isCorrect ? 1 : 0) >= 5) badges.push("Conocedor")
-            onComplete(props.xpReward, props.coinReward)
+  const completeLevel = () => {
+    playSuccess()
+    launchConfetti()
+    const badges: string[] = []
+    if (score >= 80) badges.push("Experto")
+    if (!hintUsed) badges.push("Sin Pistas")
+    onComplete(levelData.xpReward, levelData.coinReward, badges)
+  }
 
-          }
+  const handleNext = () => {
+    if (type === "roleplay") {
+      if (isCorrect) {
+        if (currentIndex < levelData.steps.length - 1) {
+          setCurrentIndex((i) => i + 1)
+          resetForNext()
         } else {
-          setCurrentQuestion((q) => q + 1)
-          setSelectedAnswer(null)
-          setShowResult(false)
+          completeLevel()
         }
       } else {
-        if (isCorrect) {
-          if (reviewPos < wrongQueue.length - 1) {
-            setReviewPos((p) => p + 1)
-            setSelectedAnswer(null)
-            setShowResult(false)
-          } else {
-            const finalScore = score + question.points
-            const badges: string[] = []
-            if (correctAnswers + 1 === quizQuestions.length) badges.push("Perfeccionista")
-            if (finalScore >= 120) badges.push("Experto en Comunicación")
-            if (correctAnswers + 1 >= 5) badges.push("Conocedor")
-            onComplete(props.xpReward, props.coinReward)
+        resetForNext()
+      }
+      return
+    }
 
-          }
+    // quiz
+    if (pass === "first") {
+      if (currentIndex < levelData.steps.length - 1) {
+        setCurrentIndex((i) => i + 1)
+        resetForNext()
+      } else {
+        if (retryQueue.length > 0) {
+          setPass("retry")
+          setRetryPos(0)
+          resetForNext()
         } else {
-          setSelectedAnswer(null)
-          setShowResult(false)
+          completeLevel()
         }
       }
-    }, 1200)
+    } else {
+      if (isCorrect) {
+        if (retryPos < retryQueue.length - 1) {
+          setRetryPos((p) => p + 1)
+          resetForNext()
+        } else {
+          completeLevel()
+        }
+      } else {
+        resetForNext()
+      }
+    }
   }
 
-  const getScorePercentage = () => {
-    const maxScore = quizQuestions.reduce((sum, q) => sum + q.points, 0)
-    return Math.round((score / maxScore) * 100)
-  }
-
-  if (showResult) {
-    const isCorrect = selectedAnswer === question.correctAnswer
-    return (
-      <div
-        className="min-h-screen bg-cover bg-center bg-no-repeat flex items-center justify-center"
-        style={{ backgroundImage: `url(${backgroundImage})` }}
-      >
-        <div className="absolute inset-0 bg-black/30"></div>
-        <div className="relative z-10 w-full max-w-2xl p-4">
-          <Card className="w-full animate-bounce-in">
-            <CardContent className="p-8 text-center">
-              <div className="text-6xl mb-4">{isCorrect ? "✅" : "❌"}</div>
-              <h3 className="text-2xl font-bold mb-4">{isCorrect ? "¡Correcto!" : "Incorrecto"}</h3>
-
-              {isCorrect && (
-                <div className="bg-green-100 rounded-lg p-4 mb-4">
-                  <p className="text-lg font-semibold text-green-700 mb-2">+{question.points} puntos</p>
-                  <Badge className="bg-green-500">{question.category}</Badge>
-                </div>
-              )}
-
-              <div className="bg-muted/50 rounded-lg p-4 mb-4 text-left">
-                <p className="font-semibold mb-2">Explicación:</p>
-                <p className="text-muted-foreground">{question.explanation}</p>
-                {!isCorrect && (
-                  <p className="text-sm text-primary mt-2">
-                    Respuesta correcta: {question.options[question.correctAnswer]}
-                  </p>
-                )}
-              </div>
-
-              <div className="flex items-center justify-center gap-2">
-                <Star className="w-5 h-5 text-yellow-500" />
-                <span className="font-bold">
-                  Puntuación: {score} ({getScorePercentage()}%)
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    )
+  const showHint = () => {
+    if (!hintUsed) setHintUsed(true)
   }
 
   return (
-    <div
-      className="min-h-screen bg-cover bg-center bg-no-repeat relative"
-      style={{ backgroundImage: `url(${backgroundImage})` }}
-    >
-      <div className="absolute inset-0 bg-black/30"></div>
+  <div
+    className="relative min-h-screen bg-cover bg-center bg-no-repeat"
+    style={{ backgroundImage: `url('/${levelData.background}')` }}
+  >
+    {/* Capa oscura para contraste */}
+    <div className="absolute inset-0 bg-black/25" />
 
-      <div className="relative z-10 max-w-4xl mx-auto py-8 space-y-6">
-        {/* Header */}
-        <Card className="bg-gradient-to-r from-indigo-500 to-cyan-500 text-white border-0">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <Button variant="ghost" onClick={onBack} className="text-white hover:bg-white/20">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Salir
+    {/* Contenido flotante */}
+    <div className="relative z-10 max-w-4xl mx-auto">
+      {/* Header */}
+      <div className="flex items-center gap-4 mb-6">
+        <Button variant="outline" onClick={onBack} className="border-amber-300 text-amber-800 bg-white/90 hover:bg-white" > 
+          ← Volver
+        </Button>
+        <h1 className="text-2xl font-bold text-white drop-shadow-md">{levelData.title}</h1>
+        <div className="text-3xl animate-bounce">{currentPet?.icon}</div>
+        <div className="flex items-center gap-2 ml-auto">
+          <Heart className="w-5 h-5 text-red-500" />
+          <span className="font-bold text-red-600">
+            {userData.lives}/{userData.maxLives}
+          </span>
+        </div>
+      </div>
+
+      {/* Card principal (glassmorphism) */}
+      <Card className="relative overflow-hidden bg-white/20 backdrop-blur-md border border-amber/200 shadow-lg rounded-2xl">
+        <CardContent className="p-8 relative z-10 text-amber-900">
+          {/* Progreso */}
+          <div className="mb-4 flex justify-between text-sm text-white">
+            <span>Progreso</span>
+            <span>
+              {pass === "retry"
+                ? "Corrigiendo errores"
+                : `${stepIndex + 1} de ${levelData.steps.length}`}
+            </span>
+          </div>
+          <Progress
+            value={
+              pass === "retry" && type === "quiz" ? 100 : ((stepIndex + 1) / levelData.steps.length) * 100
+            }
+          />
+
+          {/* Story al inicio */}
+          {stepIndex === 0 && (
+            <div className="my-4 p-4 bg-white/50 border border-white/40 rounded-lg">
+              {levelData.story}
+            </div>
+          )}
+
+          {/* Pista de mascota */}
+          <div className="mb-6 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="text-3xl">{currentPet?.icon}</div>
+              <p className="text-sm text-white">
+                {currentPet?.name} está aquí para ayudarte
+              </p>
+            </div>
+            {!hintUsed && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={showHint}
+                className="border-amber/40 text-amber-800 hover:bg-white/10"
+              >
+                <Lightbulb className="w-4 h-4 mr-1" /> Pedir pista
               </Button>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <Brain className="w-5 h-5" />
-                  <span className="font-bold">Quiz de Comunicación</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Star className="w-5 h-5 text-yellow-300" />
-                  <span className="font-bold text-lg">{score}</span>
-                </div>
-              </div>
+            )}
+          </div>
+          {hintUsed && (
+            <div className="mb-6 p-3 bg-blue-50/70 border border-blue-200 rounded-lg">
+              <p className="text-blue-800 text-sm">💡 {levelData.hint}</p>
             </div>
-            <Progress value={((currentQuestion + 1) / quizQuestions.length) * 100} className="bg-white/20" />
-            <p className="text-sm text-white/80">
-              Pregunta {currentQuestion + 1} de {quizQuestions.length}
-            </p>
-          </CardHeader>
-        </Card>
+          )}
 
-        {/* Question */}
-        <Card className="overflow-hidden">
-          <CardHeader className="bg-gradient-to-r from-indigo-500/10 to-cyan-500/10">
-            <div className="flex items-center gap-3 mb-2">
-              <Target className="w-6 h-6 text-primary" />
-              <Badge variant="outline">{question.category}</Badge>
-              <Badge variant="secondary">{question.points} pts</Badge>
-            </div>
-            <CardTitle className="text-xl leading-relaxed">{question.question}</CardTitle>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="space-y-3 mb-8">
-              {question.options.map((option, index) => (
+          {/* Situación */}
+          <div className="mb-6">
+            <h3 className="font-semibold mb-2 text-white">Situación:</h3>
+            <p className="bg-white/70 p-4 rounded-lg">{currentStep.situation}</p>
+          </div>
+
+          {/* Opciones o Feedback (sin cambios de lógica) */}
+          {!showFeedback ? (
+            <div className="space-y-3">
+              {currentStep.options.map((opt: any, i: number) => (
                 <Button
-                  key={index}
-                  onClick={() => handleAnswerSelect(index)}
-                  variant={selectedAnswer === index ? "default" : "outline"}
-                  className={`w-full p-4 h-auto text-left justify-start transition-all duration-200 ${
-                    selectedAnswer === index
-                      ? "bg-primary text-primary-foreground"
-                      : "hover:bg-primary/5 hover:border-primary/50"
-                  }`}
+                  key={i}
+                  onClick={() => handleOption(i)}
+                  className="w-full text-left justify-start p-4 h-auto bg-amber-700 text-white"
+                  disableClickSound
                 >
-                  <div className="flex items-center gap-4">
-                    <div
-                      className={`w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold ${
-                        selectedAnswer === index
-                          ? "border-primary-foreground text-primary-foreground"
-                          : "border-primary text-primary"
-                      }`}
-                    >
-                      {String.fromCharCode(65 + index)}
-                    </div>
-                    <span>{option}</span>
-                  </div>
+                  {opt.text}
                 </Button>
               ))}
             </div>
-
-            <div className="flex justify-between items-center">
-              <div className="text-sm text-muted-foreground">
-                {correctAnswers} respuestas correctas de {currentQuestion}
+          ) : (
+            <div className="mt-4">
+              <div
+                className={`p-4 rounded-lg border-2 ${
+                  isCorrect ? "bg-green-100 border-green-300" : "bg-red-100 border-red-300"
+                }`}
+              >
+                {isCorrect ? currentStep.feedback.correct : currentStep.feedback.incorrect}
               </div>
               <Button
-                onClick={handleNextQuestion}
-                disabled={selectedAnswer === null}
-                className="bg-primary hover:bg-primary/90"
+                onClick={handleNext}
+                className={`mt-4 ${isCorrect ? "bg-green-500" : "bg-red-500"} text-white`}
               >
-                {isLastQuestion ? "Finalizar Quiz" : "Siguiente Pregunta"}
+                {isCorrect
+                  ? stepIndex < levelData.steps.length - 1
+                    ? "Siguiente"
+                    : "Completar nivel"
+                  : "Reintentar"}
               </Button>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Progress Summary */}
-        <Card className="bg-muted/30">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between text-sm">
-              <span>Progreso del Quiz</span>
-              <span className="font-semibold">
-                {Math.round(((currentQuestion + 1) / quizQuestions.length) * 100)}%
-              </span>
-            </div>
-            <Progress value={((currentQuestion + 1) / quizQuestions.length) * 100} className="mt-2" />
-          </CardContent>
-        </Card>
-      </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
-  )
+  </div>
+)
+
 }
 </file>
 
 <file path="app/page.tsx">
 "use client"
+
 import CourseList from "@/components/CourseList"
 import { UserData, pets, Pet } from "@/lib/userTypes"
 import LevelComponent from "@/components/LevelComponent"
-import RoleplayLevel from "@/components/RoleplayLevel"
-import QuizLevel from "@/components/QuizLevel"
+import RoleplayLevel from "@/playground/RoleplayLevel"
+import QuizLevel from "@/playground/QuizLevel"
 import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -3028,6 +3437,7 @@ import { Progress } from "@/components/ui/progress"
 import LoginButton from "@/components/LoginButton"
 import Dashboard from "@/components/Dashboard"
 import { Level } from "@/lib/userTypes"
+import { allLevels } from "../lib/levels"
 
 
 import {
@@ -3162,7 +3572,7 @@ const communicationLevels: Level[] = [
   {
     id: 3,
     title: "quiz",
-    type: "video",
+    type: "quiz",
     duration: 10,
     xpReward: 60,
     coinReward: 25,
@@ -3203,7 +3613,19 @@ const petData = {
   "ninja-capybara": { name: "Capi Ninja", icon: "🥷🦫" },
 }
 
-
+const completeLevel = (
+  levelId: number,
+  xp: number,
+  coins: number,
+  badges: string[]
+) => {
+  console.log("✅ Nivel completado:", {
+    levelId,
+    xp,
+    coins,
+    badges,
+  })
+}
 
 const DeckCarousel = ({
   courses,
@@ -3225,7 +3647,7 @@ const DeckCarousel = ({
     if (position === 1 || position === courses.length - 1) return "side"
     return "hidden"
   }
-
+  
   return (
     <div className="relative h-[550px] flex items-center justify-center px-8">
       <div className="relative w-full max-w-5xl flex items-center justify-center">
@@ -3438,7 +3860,7 @@ export default function Nu9veAcademy() {
     }))
   }
 
-  const completeLevel = (levelId: number, xp: number, coins: number) => {
+  const completeLevel = (levelId: number, xp: number, coins: number, badges: string[]) => {
     setUserData((prev) => {
       const newCompletedLevels = [...prev.completedLevels]
       if (!newCompletedLevels.includes(levelId)) {
@@ -3900,12 +4322,16 @@ export default function Nu9veAcademy() {
             {currentView === "profile" && renderProfile()}
             {currentView === "level" && currentLevel && (
  <LevelComponent
-  level={communicationLevels[currentLevel - 1]}   // ✅ no levelId
-  onComplete={(score, badges) => completeLevel(currentLevel, score, badges)}
-  onBack={() => setCurrentView("course")}
+  levelId={allLevels[currentLevel - 1].id}
+  type={allLevels[currentLevel - 1].type}
   userData={userData}
+  onComplete={(xp, coins, badges) =>
+    completeLevel(currentLevel, xp, coins, badges)
+  }
+  onBack={() => setCurrentView("course")}
   onLoseLife={loseLife}
 />
+
 )}
 
           </main>

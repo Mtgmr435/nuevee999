@@ -35,5 +35,5 @@ export interface Level {
   coinReward: number
   isCompleted: boolean
   isUnlocked: boolean
-  world: "selva" | "montana" | "rio" | "mercado" | "ciudad"
+  world: "selva" | "montana" | "rio" | "mercado" | "campamento"
 }
