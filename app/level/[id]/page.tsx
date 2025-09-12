@@ -1,7 +1,50 @@
 "use client"
+
 import { useRouter } from "next/navigation"
-import RoleplayLevel from "@/components/RoleplayLevel"
-import QuizLevel from "@/components/QuizLevel"
+import LevelComponent from "@/components/LevelComponent"
+import { Level, UserData } from "@/lib/userTypes"
+import { useState } from "react"
+
+// 🔹 Definición de niveles de ejemplo (puedes moverlo a un lib si quieres)
+const communicationLevels: Level[] = [
+  {
+    id: 1,
+    title: "Primeros Encuentros",
+    type: "roleplay",
+    duration: 8,
+    xpReward: 50,
+    coinReward: 20,
+    isCompleted: false,
+    isUnlocked: true,
+    world: "selva",
+  },
+  {
+    id: 2,
+    title: "Escucha Activa",
+    type: "quiz",
+    duration: 6,
+    xpReward: 40,
+    coinReward: 15,
+    isCompleted: false,
+    isUnlocked: true,
+    world: "montana",
+  },
+]
+
+// 🔹 Datos iniciales del usuario (puedes reemplazar con Firestore si ya tienes auth)
+const initialUserData: UserData = {
+  level: 1,
+  xp: 0,
+  coins: 100,
+  gems: 5,
+  lives: 5,
+  maxLives: 5,
+  lastDailyChest: null,
+  completedLevels: [],
+  badges: [],
+  currentPet: "baby-capybara",
+  unlockedPets: ["baby-capybara"],
+}
 
 interface LevelPageProps {
   params: {
@@ -12,41 +55,56 @@ interface LevelPageProps {
 export default function LevelPage({ params }: LevelPageProps) {
   const router = useRouter()
   const levelId = Number.parseInt(params.id)
+  const level = communicationLevels.find((lvl) => lvl.id === levelId)
 
-  // Determinar el tipo de nivel basado en el ID
-// app/level/[id]/page.tsx
-const getLevelType = (id: number) => {
-  if (id === 1) return "roleplay"
-  return "quiz" // el resto como quiz
-}
-  const levelType = getLevelType(levelId)
+  const [userData, setUserData] = useState<UserData>(initialUserData)
 
-  const handleComplete = (score: number, badges: string[]) => {
-    // Aquí guardarías el progreso en localStorage o base de datos
-    console.log(`Level ${levelId} completed with score: ${score}, badges: ${badges}`)
-    router.push("/")
-  }
-
-  const handleExit = () => {
-    router.push("/")
-  }
-
-  if (levelType === "roleplay") {
-    return <RoleplayLevel levelId={levelId} onComplete={handleComplete} onExit={handleExit} />
-  }
-
-  if (levelType === "quiz") {
-    return <QuizLevel levelId={levelId} onComplete={handleComplete} onExit={handleExit} />
-  }
-
-  // Placeholder para otros tipos de niveles
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 p-4 flex items-center justify-center">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold mb-4">Nivel {levelId}</h1>
-        <p className="text-muted-foreground mb-4">Tipo: {levelType}</p>
-        <p className="text-sm text-muted-foreground">Este tipo de nivel estará disponible pronto</p>
+  if (!level) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Nivel no encontrado</h1>
+          <button
+            onClick={() => router.push("/")}
+            className="bg-amber-500 hover:bg-amber-600 text-white px-6 py-2 rounded-lg shadow-md"
+          >
+            ← Volver al inicio
+          </button>
+        </div>
       </div>
-    </div>
+    )
+  }
+
+  const handleComplete = (xp: number, coins: number, badges: string[]) => {
+    setUserData((prev) => ({
+      ...prev,
+      xp: prev.xp + xp,
+      coins: prev.coins + coins,
+      completedLevels: [...prev.completedLevels, level.id],
+      badges: [...prev.badges, ...badges],
+    }))
+    router.push("/") // 👈 al completar, regresa al inicio (puedes cambiarlo a dashboard)
+  }
+
+  const handleBack = () => {
+    router.push("/") // 👈 salir sin completar
+  }
+
+  const handleLoseLife = () => {
+    setUserData((prev) => ({
+      ...prev,
+      lives: Math.max(0, prev.lives - 1),
+    }))
+  }
+
+  return (
+    <LevelComponent
+  levelId={level.id}             // antes tenías level={level}
+  type={level.type}              // agregamos el tipo para que sepa si es roleplay o quiz
+  userData={userData}
+  onComplete={handleComplete}
+  onBack={handleBack}
+  onLoseLife={handleLoseLife}
+/>
   )
 }

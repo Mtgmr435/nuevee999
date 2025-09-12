@@ -1,4 +1,5 @@
 "use client"
+
 import CourseList from "@/components/CourseList"
 import { UserData, pets, Pet } from "@/lib/userTypes"
 import LevelComponent from "@/components/LevelComponent"
@@ -12,6 +13,7 @@ import { Progress } from "@/components/ui/progress"
 import LoginButton from "@/components/LoginButton"
 import Dashboard from "@/components/Dashboard"
 import { Level } from "@/lib/userTypes"
+import { allLevels } from "../lib/levels"
 
 
 import {
@@ -187,7 +189,19 @@ const petData = {
   "ninja-capybara": { name: "Capi Ninja", icon: "🥷🦫" },
 }
 
-
+const completeLevel = (
+  levelId: number,
+  xp: number,
+  coins: number,
+  badges: string[]
+) => {
+  console.log("✅ Nivel completado:", {
+    levelId,
+    xp,
+    coins,
+    badges,
+  })
+}
 
 const DeckCarousel = ({
   courses,
@@ -209,7 +223,7 @@ const DeckCarousel = ({
     if (position === 1 || position === courses.length - 1) return "side"
     return "hidden"
   }
-
+  
   return (
     <div className="relative h-[550px] flex items-center justify-center px-8">
       <div className="relative w-full max-w-5xl flex items-center justify-center">
@@ -422,7 +436,7 @@ export default function Nu9veAcademy() {
     }))
   }
 
-  const completeLevel = (levelId: number, xp: number, coins: number) => {
+  const completeLevel = (levelId: number, xp: number, coins: number, badges: string[]) => {
     setUserData((prev) => {
       const newCompletedLevels = [...prev.completedLevels]
       if (!newCompletedLevels.includes(levelId)) {
@@ -884,12 +898,16 @@ export default function Nu9veAcademy() {
             {currentView === "profile" && renderProfile()}
             {currentView === "level" && currentLevel && (
  <LevelComponent
-  level={communicationLevels[currentLevel - 1]}   // ✅ no levelId
-  onComplete={(score, badges) => completeLevel(currentLevel, score, badges)}
-  onBack={() => setCurrentView("course")}
+  levelId={allLevels[currentLevel - 1].id}
+  type={allLevels[currentLevel - 1].type}
   userData={userData}
+  onComplete={(xp, coins, badges) =>
+    completeLevel(currentLevel, xp, coins, badges)
+  }
+  onBack={() => setCurrentView("course")}
   onLoseLife={loseLife}
 />
+
 )}
 
           </main>

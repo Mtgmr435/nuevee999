@@ -5,10 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { Star, Zap, Heart, MessageCircle, Trophy, ArrowLeft } from "lucide-react"
+import { Star, ArrowLeft, Heart } from "lucide-react"
 import { levelBackgrounds } from "@/lib/levelBackgrounds"
+import { UserData } from "@/lib/userTypes"
+import { launchConfetti } from "@/lib/confetti"
+import useSound from "@/hooks/useSound"
 
-// 👇 tipos de datos
+// 🔹 Tipos de datos
 interface Choice {
   text: string
   points: number
@@ -29,11 +32,13 @@ interface Scene {
 interface RoleplayLevelProps {
   levelId: number
   world: "selva" | "montana" | "rio" | "mercado" | "ciudad"
-  onComplete: (score: number, badges: string[]) => void
+  userData: UserData
+  onComplete: (xp: number, coins: number, badges: string[]) => void
   onExit: () => void
+  onLoseLife: () => void
 }
 
-// 👇 aquí usas tus escenas
+// 🔹 Escenas de ejemplo
 const communicationScenes: Scene[] = [
   {
     id: 1,
@@ -58,7 +63,7 @@ const communicationScenes: Scene[] = [
       },
       {
         text: "Esperando a que ella hable primero",
-        points: 2,
+        points: 0,
         principle: "Inseguridad",
         nextScene: 2,
         feedback: "Oportunidad perdida, deberías tomar la iniciativa.",
@@ -75,17 +80,19 @@ const communicationScenes: Scene[] = [
   },
 ]
 
-// 👇 insignias de ejemplo
+// 🔹 Insignias
 const badges = [
-  { name: "Empático", threshold: 20, icon: Heart },
-  { name: "Comunicador", threshold: 30, icon: MessageCircle },
+  { name: "Empático", threshold: 15 },
+  { name: "Comunicador", threshold: 25 },
 ]
 
 export default function RoleplayLevel({
   levelId,
   world,
+  userData,
   onComplete,
   onExit,
+  onLoseLife,
 }: RoleplayLevelProps) {
   const [currentScene, setCurrentScene] = useState(1)
   const [score, setScore] = useState(0)
@@ -96,19 +103,30 @@ export default function RoleplayLevel({
   const scene = communicationScenes.find((s) => s.id === currentScene)
   const backgroundImage = levelBackgrounds[world] || levelBackgrounds["selva"]
 
+  // 🎵 sonidos
+  const playClick = useSound("/sounds/click.mp3")
+  const playSuccess = useSound("/sounds/success.mp3") // al completar nivel
+  const playSuccess2 = useSound("/sounds/success2.mp3") // al responder bien
+  const playFail = useSound("/sounds/fail.mp3")
+
   const makeChoice = (choiceIndex: number) => {
     if (!scene) return
     const choice = scene.choices[choiceIndex]
-    const newScore = score + choice.points
-
     setLastChoice(choice)
     setShowFeedback(true)
-    setScore(newScore)
 
-    // otorgar badges
+    if (choice.points > 0) {
+      setScore((prev) => prev + choice.points)
+      playSuccess2()
+    } else {
+      playFail()
+      onLoseLife()
+    }
+
+    // badges dinámicos
     const newBadges = badges
-      .filter((badge) => newScore >= badge.threshold && !earnedBadges.includes(badge.name))
-      .map((badge) => badge.name)
+      .filter((b) => score + choice.points >= b.threshold && !earnedBadges.includes(b.name))
+      .map((b) => b.name)
 
     if (newBadges.length > 0) {
       setEarnedBadges([...earnedBadges, ...newBadges])
@@ -117,7 +135,9 @@ export default function RoleplayLevel({
     setTimeout(() => {
       setShowFeedback(false)
       if (choice.nextScene === 2) {
-        onComplete(newScore, [...earnedBadges, ...newBadges])
+        playSuccess()
+        launchConfetti()
+        onComplete(score + choice.points, 0, [...earnedBadges, ...newBadges]) 
       } else {
         setCurrentScene(choice.nextScene)
       }
@@ -126,14 +146,20 @@ export default function RoleplayLevel({
 
   if (!scene) return null
 
-  // vista de feedback
+  // 🎨 Vista feedback
   if (showFeedback && lastChoice) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white/80">
-        <Card className="max-w-lg w-full animate-bounce-in">
+      <div
+        className="min-h-screen flex items-center justify-center bg-cover bg-center"
+        style={{ backgroundImage: `url(${backgroundImage})` }}
+      >
+        <div className="absolute inset-0 bg-black/40"></div>
+        <Card className="max-w-lg w-full relative z-10 animate-bounce-in">
           <CardContent className="p-6 text-center">
-            <div className="text-5xl mb-4">✨</div>
-            <h3 className="text-xl font-bold mb-2">¡Tu elección!</h3>
+            <div className="text-5xl mb-4">{lastChoice.points > 0 ? "✅" : "❌"}</div>
+            <h3 className="text-xl font-bold mb-2">
+              {lastChoice.points > 0 ? "¡Correcto!" : "Incorrecto"}
+            </h3>
             <p className="mb-2">+{lastChoice.points} puntos</p>
             <Badge>{lastChoice.principle}</Badge>
             <p className="text-sm mt-2">{lastChoice.feedback}</p>
@@ -143,7 +169,7 @@ export default function RoleplayLevel({
     )
   }
 
-  // vista normal
+  // 🎨 Vista normal
   return (
     <div
       className="min-h-screen bg-cover bg-center bg-no-repeat relative"
@@ -159,9 +185,17 @@ export default function RoleplayLevel({
               <Button variant="ghost" onClick={onExit}>
                 <ArrowLeft className="w-4 h-4 mr-2" /> Salir
               </Button>
-              <div className="flex items-center gap-4">
-                <Star className="w-5 h-5 text-yellow-500" />
-                <span className="font-bold">{score} pts</span>
+              <div className="flex items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <Star className="w-5 h-5 text-yellow-500" />
+                  <span className="font-bold">{score} pts</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Heart className="w-5 h-5 text-red-500" />
+                  <span className="font-bold text-red-600">
+                    {userData.lives}/{userData.maxLives}
+                  </span>
+                </div>
               </div>
             </div>
             <Progress value={(currentScene / communicationScenes.length) * 100} />
@@ -182,7 +216,10 @@ export default function RoleplayLevel({
             {scene.choices.map((choice, index) => (
               <Button
                 key={index}
-                onClick={() => makeChoice(index)}
+                onClick={() => {
+                  playClick()
+                  makeChoice(index)
+                }}
                 className="w-full mb-3"
               >
                 {choice.text}
