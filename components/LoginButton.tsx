@@ -1,59 +1,69 @@
-"use client"
+// components/LoginButton.tsx
+"use client";
 
-import { signInWithPopup, signOut } from "firebase/auth"
-import { auth, googleProvider } from "@/lib/firebase"
-import { Button } from "@/components/ui/button"
-import { LogIn, LogOut } from "lucide-react"
-import { useState } from "react"
-import { useAuth } from "./AuthProvider"
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/components/AuthProvider";
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signInWithRedirect,
+  signOut,
+} from "firebase/auth";
+import { app } from "@/lib/firebase";
 
 export default function LoginButton() {
-  const { user } = useAuth()
-  const [loading, setLoading] = useState(false)
+  const { user } = useAuth();
+  const [busy, setBusy] = useState(false);
+  const auth = getAuth(app); // MISMA instancia
 
-  const handleLogin = async () => {
-    if (!auth || !googleProvider) return // 🚨 evitar error en SSR
+  const login = async () => {
+    if (busy) return;
+    setBusy(true);
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" });
     try {
-      setLoading(true)
-      await signInWithPopup(auth, googleProvider)
+      await signInWithPopup(auth, provider);
+      // onAuthStateChanged (AuthProvider) cambiará la UI
+    } catch (e: any) {
+      if (
+        e?.code === "auth/popup-blocked" ||
+        e?.code === "auth/popup-closed-by-user" ||
+        e?.code === "auth/cancelled-popup-request" ||
+        e?.code === "auth/operation-not-supported-in-this-environment"
+      ) {
+        await signInWithRedirect(auth, provider);
+      } else {
+        console.warn("Login error", e);
+        alert("No se pudo iniciar sesión.");
+      }
     } finally {
-      setLoading(false)
+      setBusy(false);
     }
-  }
+  };
 
-  const handleLogout = async () => {
-    if (!auth) return // 🚨 evitar error en SSR
+  const logout = async () => {
+    if (busy) return;
+    setBusy(true);
     try {
-      setLoading(true)
-      await signOut(auth)
+      await signOut(auth);
     } finally {
-      setLoading(false)
+      setBusy(false);
     }
-  }
+  };
 
   if (user) {
     return (
-      <Button
-        onClick={handleLogout}
-        disabled={loading}
-        variant="outline"
-        className="flex-1 border-amber-300 text-amber-700 text-lg px-8 py-4 rounded-xl shadow-md flex items-center justify-center gap-3"
-      >
-        <LogOut className="w-6 h-6" />
-        Cerrar Sesión
+      <Button variant="secondary" onClick={logout} disabled={busy}>
+        Cerrar sesión
       </Button>
-    )
+    );
   }
-
   return (
-    <Button
-      onClick={handleLogin}
-      disabled={loading}
-      variant="outline"
-      className="flex-1 border-amber-300 text-amber-700 text-lg px-8 py-4 rounded-xl shadow-md flex items-center justify-center gap-3"
-    >
-      <LogIn className="w-6 h-6" />
-      Iniciar Sesión con Google
+    <Button onClick={login} disabled={busy}>
+      {busy ? "Conectando…" : "Iniciar sesión con Google"}
     </Button>
-  )
+  );
 }
+

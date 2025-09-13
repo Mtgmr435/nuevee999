@@ -1,18 +1,19 @@
-import type { Metadata } from "next"
-import "./globals.css"
-import ClientAuthProvider from "@/components/ClientAuthProvider"
+// app/layout.tsx
+import type { Metadata } from "next";
+import "./globals.css";
+import { AuthProvider } from "@/components/AuthProvider";
 
 export const metadata: Metadata = {
-  title: "Nu9ve Academy - Habilidades Blandas Gamificadas",
-  description: "Aprende habilidades blandas de forma divertida con capibaras",
-}
+  title: "Nu9ve",
+  description: "Habilidades + juego",
+};
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es">
       <body>
-        <ClientAuthProvider>{children}</ClientAuthProvider>
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
-  )
+  );
 }
