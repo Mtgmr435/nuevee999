@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import LoginButton from "@/components/LoginButton"
 import Dashboard from "@/components/Dashboard"
-import { allLevels } from "../lib/levels"
+import { allLevels } from "@/lib/levels/index"
 import { updateStreak } from "@/lib/progress"
 import { useAuth } from "@/components/AuthProvider"
 import { useRouter } from "next/navigation"
@@ -77,8 +77,8 @@ const initialUserData: UserData = {
 const courses: Course[] = [
   {
     id: "communication-v1",
-    title: "Comunicación Efectiva",
-    description: "Domina el arte de comunicarte con confianza y empatía",
+    title: "Empatia",
+    description: "Entrenamiento: La aventura de la empatía.",
     icon: "💬",
     color: "from-amber-400 to-orange-500",
     totalLevels: 12,
@@ -361,6 +361,7 @@ export default function Nu9veAcademy() {
         gems: prev.gems + rewards.gems,
         xp: prev.xp + rewards.xp,
         lastDailyChest: new Date().toDateString(),
+        
       }))
       setShowDailyChest(false)
       setChestAnimation(false)
@@ -379,19 +380,28 @@ export default function Nu9veAcademy() {
   const loseLife = () => setUserData((prev) => ({ ...prev, lives: Math.max(0, prev.lives - 1) }))
 
   // ✅ completar nivel
-  const handleCompleteLevel = (levelId: number, xp: number, coins: number, badges: string[]) => {
-    setUserData((prev) => {
-      const newCompleted = prev.completedLevels.includes(levelId)
-        ? prev.completedLevels
-        : [...prev.completedLevels, levelId]
-      return { ...prev, xp: prev.xp + xp, coins: prev.coins + coins, completedLevels: newCompleted }
-    })
-    const nextLevelIndex = communicationLevels.findIndex((level) => level.id === levelId + 1)
-    if (nextLevelIndex !== -1) {
-      communicationLevels[nextLevelIndex].isUnlocked = true
-    }
-    setCurrentView("course")
+  const handleCompleteLevel = (levelId: number, xp: number, coins: number, medal: string) => {
+  setUserData(prev => ({
+  ...prev,
+  completedLevels: Array.from(new Set([...prev.completedLevels, levelId])),
+  badges: [
+    ...prev.badges.filter(b => b.levelId !== levelId),
+    { levelId, medal }, // 👈 Asegúrate que esto se guarda
+  ],
+  coins: prev.coins + coins,
+  xp: prev.xp + xp,
+}))
+
+   // 🔓 desbloquea siguiente nivel
+  const nextLevelIndex = communicationLevels.findIndex(
+    (level) => level.id === levelId + 1
+  )
+  if (nextLevelIndex !== -1) {
+    communicationLevels[nextLevelIndex].isUnlocked = true
   }
+
+  setCurrentView("course")
+}
 
   // ==========================
   // 🔄 SINCRONIZACIÓN FIRESTORE
@@ -877,11 +887,15 @@ export default function Nu9veAcademy() {
             {currentView === "dashboard" && renderDashboard()}
             {currentView === "course" && (
               <CourseList
-                levels={communicationLevels}
-                userData={userData}
-                onBack={() => setCurrentView("dashboard")}
-                onStartLevel={(id) => startLevel(id)}
-              />
+  levels={communicationLevels.map(l => {
+    const badge = userData.badges.find(b => b.levelId === l.id)
+    return { ...l, medal: badge?.medal }
+  })}
+  userData={userData}
+  onBack={() => setCurrentView("dashboard")}
+  onStartLevel={(id) => startLevel(id)}
+/>
+
             )}
             {currentView === "shop" && renderShop()}
             {currentView === "profile" && renderProfile()}
@@ -889,7 +903,7 @@ export default function Nu9veAcademy() {
               <LevelComponent
                 levelId={allLevels[currentLevel - 1].id}
                 userData={userData}
-                onComplete={(xp, coins, badges) => handleCompleteLevel(currentLevel, xp, coins, badges)}
+                onComplete={handleCompleteLevel}
                 onBack={() => setCurrentView("course")}
                 onLoseLife={loseLife}
               />

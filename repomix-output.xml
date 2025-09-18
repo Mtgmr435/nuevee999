@@ -50,6 +50,7 @@ components.json
 components/AuthProvider.tsx
 components/ClientAuthProvider.tsx
 components/CourseCard.tsx
+components/CourseIntroModal.tsx
 components/CourseList.tsx
 components/Dashboard.tsx
 components/Leaderboard.tsx
@@ -62,9 +63,9 @@ components/ui/progress.tsx
 eslint.config.mjs
 hooks/useSound.tsx
 lib/confetti.ts
+lib/courseIntros.ts
 lib/firebase.ts
 lib/levelBackgrounds.ts
-lib/levels.ts
 lib/levels/communication/quizLevel2.ts
 lib/levels/communication/quizLevel4.ts
 lib/levels/communication/roleplayLevel1.ts
@@ -519,6 +520,48 @@ export default function CourseCard({ level }: { level: any }) {
         </div>
       )}
     </>
+  )
+}
+</file>
+
+<file path="components/CourseIntroModal.tsx">
+"use client"
+
+import { Button } from "@/components/ui/button"
+import { courseIntros, defaultIntro } from "@/lib/courseIntros"
+
+type Props = {
+  courseId: string
+  onClose: () => void
+  onStart: () => void
+}
+
+export default function CourseIntroModal({ courseId, onClose, onStart }: Props) {
+  const intro = courseIntros[courseId] ?? defaultIntro
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+      <div className="w-full max-w-lg rounded-xl bg-white/95 p-6 shadow-xl">
+        <h2 className="text-xl font-bold text-amber-800">{intro.title}</h2>
+
+        <p className="mt-3 leading-relaxed text-gray-700">{intro.description}</p>
+
+        <ul className="mt-3 list-inside list-disc text-gray-700">
+          {intro.bullets.map((b, i) => (
+            <li key={i}>{b}</li>
+          ))}
+        </ul>
+
+        <div className="mt-6 flex justify-end gap-3">
+          <Button variant="outline" onClick={onClose}>
+            Volver
+          </Button>
+          <Button className="bg-amber-600 text-white hover:bg-amber-700" onClick={onStart}>
+            Comenzar Aventura
+          </Button>
+        </div>
+      </div>
+    </div>
   )
 }
 </file>
@@ -1035,6 +1078,56 @@ export function launchConfetti() {
 }
 </file>
 
+<file path="lib/courseIntros.ts">
+// lib/courseIntros.ts
+export type CourseIntro = {
+  title: string
+  description: string
+  bullets: string[]
+}
+
+// 🔹 Intros por ID de curso (puedes agregar más sin tocar componentes)
+export const courseIntros: Record<string, CourseIntro> = {
+  "communication-v1": {
+    title: "🌟 Entrenamiento: La Aventura de la Empatía",
+    description:
+      "Bienvenido/a, héroe. Tu reto es superar 5 misiones y desbloquear el superpoder de la empatía 🦸‍♀️🦸‍♂️.",
+    bullets: [
+      "Historia (qué está pasando)",
+      "Roleplay (cómo entrenar)",
+      "Pista secreta 🕵️ (ayuda para ganar)",
+      "Quiz-Reto (para avanzar de nivel)",
+    ],
+  },
+
+  // Ejemplo de otro curso (Liderazgo). Si no lo usas aún, déjalo.
+  "leadership-v1": {
+    title: "🔥 Entrenamiento: El Camino del Líder",
+    description:
+      "Bienvenido/a, capitán. Aprende a inspirar y guiar a tu equipo con visión y ejemplo.",
+    bullets: [
+      "Historias de liderazgo",
+      "Roleplays para decidir bajo presión",
+      "Pistas de tu mentor 🕵️",
+      "Quiz-Retos para consolidar hábitos",
+    ],
+  },
+}
+
+// 🔹 Fallback si el curso no tiene intro definida
+export const defaultIntro: CourseIntro = {
+  title: "🌟 Entrenamiento",
+  description:
+    "Bienvenido/a. Completa las misiones para desbloquear nuevas habilidades.",
+  bullets: [
+    "Historia (contexto)",
+    "Roleplay (práctica guiada)",
+    "Pista secreta 🕵️ (ayuda)",
+    "Quiz-Reto (para avanzar de nivel)",
+  ],
+}
+</file>
+
 <file path="lib/firebase.ts">
 // lib/firebase.ts
 import { initializeApp, getApps, getApp } from "firebase/app"
@@ -1085,120 +1178,6 @@ export const levelBackgrounds: Record<string, string> = {
   mercado: "/assets/worlds/mercado.png",
   ciudad: "/assets/worlds/ciudad.png",
 }
-</file>
-
-<file path="lib/levels.ts">
-import { Level } from "@/lib/userTypes"
-
-/**
- * 🔹 Aquí organizamos los cursos por categoría
- * Cada curso tiene sus niveles (quiz / roleplay por ahora).
- * En el futuro puedes meter más tipos: "interactive", "video", etc.
- */
-export const courses: Record<string, Level[]> = {
-  communication: [
-    {
-      id: 1,
-      title: "Primeros Encuentros",
-      type: "roleplay",
-      duration: 8,
-      xpReward: 50,
-      coinReward: 20,
-      isCompleted: false,
-      isUnlocked: true,
-      world: "selva",
-    },
-    {
-      id: 2,
-      title: "Escucha Activa",
-      type: "quiz",
-      duration: 6,
-      xpReward: 40,
-      coinReward: 15,
-      isCompleted: false,
-      isUnlocked: true,
-      world: "montana",
-    },
-    {
-      id: 3,
-      title: "Comunicación No Verbal",
-      type: "quiz",
-      duration: 7,
-      xpReward: 45,
-      coinReward: 18,
-      isCompleted: false,
-      isUnlocked: false,
-      world: "rio",
-    },
-    {
-      id: 4,
-      title: "Resolviendo Malentendidos",
-      type: "roleplay",
-      duration: 9,
-      xpReward: 60,
-      coinReward: 25,
-      isCompleted: false,
-      isUnlocked: false,
-      world: "ciudad",
-    },
-  ],
-
-  leadership: [
-    {
-      id: 1,
-      title: "Liderazgo Positivo",
-      type: "quiz",
-      duration: 6,
-      xpReward: 40,
-      coinReward: 15,
-      isCompleted: false,
-      isUnlocked: true,
-      world: "mercado",
-    },
-    {
-      id: 2,
-      title: "Tomando Decisiones Difíciles",
-      type: "roleplay",
-      duration: 10,
-      xpReward: 70,
-      coinReward: 30,
-      isCompleted: false,
-      isUnlocked: false,
-      world: "rio",
-    },
-  ],
-
-  creativity: [
-    {
-      id: 1,
-      title: "Pensamiento Lateral",
-      type: "quiz",
-      duration: 7,
-      xpReward: 45,
-      coinReward: 20,
-      isCompleted: false,
-      isUnlocked: true,
-      world: "mercado",
-    },
-    {
-      id: 2,
-      title: "Improvisación en Equipo",
-      type: "roleplay",
-      duration: 8,
-      xpReward: 55,
-      coinReward: 22,
-      isCompleted: false,
-      isUnlocked: false,
-      world: "selva",
-    },
-  ],
-}
-
-/**
- * 🔹 Helper para obtener todos los niveles de todos los cursos
- * (por si quieres listarlos en una sola vista de roadmap)
- */
-export const allLevels: Level[] = Object.values(courses).flat()
 </file>
 
 <file path="lib/levels/communication/quizLevel2.ts">
@@ -1556,6 +1535,14 @@ export const levelsMap: Record<number, any> = {
   4: quizLevel4,
   5: roleplayLevel5,
 }
+export const allLevels = Object.entries(levelsMap).map(([id, lvl]) => ({
+  ...lvl,
+  id: Number(id),
+}))
+
+export function getNextLevelId(id: number) {
+  return levelsMap[id + 1] ? id + 1 : null
+}
 </file>
 
 <file path="lib/progress.ts">
@@ -1673,7 +1660,7 @@ export interface UserData {
   maxLives: number
   lastDailyChest: string | null
   completedLevels: number[]
-  badges: string[]
+  badges: { levelId: number; medal: string }[]
   currentPet: string
   unlockedPets: string[]
   equippedPet?: string 
@@ -3154,8 +3141,8 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 export const dynamic = "force-dynamic"
 
 import { useRouter, useParams } from "next/navigation"
-import LevelComponent from "@/components/LevelComponent"
 import { useState } from "react"
+import LevelComponent from "@/components/LevelComponent"
 import { UserData } from "@/lib/userTypes"
 import { levelsMap } from "@/lib/levels/index"
 
@@ -3169,7 +3156,7 @@ const initialUserData: UserData = {
   lastDailyChest: null,
   completedLevels: [],
   badges: [],
-  currentPet: "baby-capybara",   // 👈 usa el nombre correcto del tipo
+  currentPet: "baby-capybara",
   unlockedPets: ["baby-capybara"],
 }
 
@@ -3197,20 +3184,30 @@ export default function LevelPage() {
     )
   }
 
-  const handleComplete = (xp: number, coins: number, badges: string[]) => {
-    setUserData((prev) => ({
-      ...prev,
-      xp: prev.xp + xp,
-      coins: prev.coins + coins,
-      completedLevels: [...prev.completedLevels, levelId],
-      badges: [...prev.badges, ...badges],
-    }))
-    // 👇 si prefieres que se quede en el mapa de niveles en lugar de ir al inicio, cambia a "/dashboard"
+  // 👇 aquí ya no usamos communicationLevels ni setCurrentView
+  const handleCompleteLevel = (
+    levelId: number,
+    xp: number,
+    coins: number,
+    medal: string
+  ) => {
+    setUserData(prev => ({
+  ...prev,
+  completedLevels: Array.from(new Set([...prev.completedLevels, levelId])),
+  badges: [
+    ...prev.badges.filter(b => b.levelId !== levelId),
+    { levelId, medal }, // 👈 Asegúrate que esto se guarda
+  ],
+  coins: prev.coins + coins,
+  xp: prev.xp + xp,
+}))
+
+    // cuando completes, vuelve al dashboard
     
   }
 
   const handleBack = () => {
-     router.push("/") 
+    router.push("/")
   }
 
   const handleLoseLife = () => {
@@ -3224,10 +3221,210 @@ export default function LevelPage() {
     <LevelComponent
       levelId={levelId}
       userData={userData}
-      onComplete={handleComplete}
+      onComplete={handleCompleteLevel}  /* 👈 ojo, aquí era handleComplete, lo corregí */
       onBack={handleBack}
       onLoseLife={handleLoseLife}
     />
+  )
+}
+</file>
+
+<file path="components/CourseList.tsx">
+"use client"
+
+import { Card, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import {
+  MessageCircle,
+  Volume2,
+  Eye,
+  Users,
+  Presentation,
+  Play,
+  Lock,
+  CheckCircle,
+} from "lucide-react"
+import { levelBackgrounds } from "@/lib/levelBackgrounds"
+
+// 🔹 estilos brillosos por medalla
+const medalStyles: Record<string, string> = {
+  diamante:
+    "bg-gradient-to-r from-cyan-100/80 to-white border-2 border-cyan-300 ring-2 ring-cyan-200 shadow-cyan-300/50 animate-pulse",
+  oro:
+    "bg-gradient-to-r from-yellow-100/80 to-white border-2 border-yellow-300 ring-2 ring-yellow-200 shadow-yellow-300/50 animate-pulse",
+  plata:
+    "bg-gradient-to-r from-slate-100/80 to-white border-2 border-slate-300 ring-2 ring-slate-200 shadow-slate-300/50 animate-pulse",
+  bronce:
+    "bg-gradient-to-r from-amber-100/70 to-white border-2 border-amber-300 ring-2 ring-amber-200 shadow-amber-300/40",
+}
+
+interface Level {
+  id: number
+  title: string
+  type: "roleplay" | "quiz" | "story" | "video" | "interactive" | "combo"
+  duration: number
+  xpReward: number
+  coinReward: number
+  isCompleted: boolean
+  isUnlocked: boolean
+  world?: "selva" | "montana" | "rio" | "mercado" | "ciudad" | "campamento"
+}
+
+interface CourseListProps {
+  levels: Level[]
+  userData: any
+  onBack: () => void
+  onStartLevel: (levelId: number) => void
+}
+
+export default function CourseList({
+  levels,
+  userData,
+  onBack,
+  onStartLevel,
+}: CourseListProps) {
+  const getLevelIcon = (type: string) => {
+    switch (type) {
+      case "roleplay":
+        return <MessageCircle className="w-6 h-6 text-blue-500" />
+      case "interactive":
+        return <Volume2 className="w-6 h-6 text-green-500" />
+      case "video":
+        return <Eye className="w-6 h-6 text-purple-500" />
+      case "story":
+        return <Users className="w-6 h-6 text-orange-500" />
+      case "quiz":
+        return <Presentation className="w-6 h-6 text-red-500" />
+      case "combo":
+        return <Presentation className="w-6 h-6 text-indigo-500" />
+      default:
+        return <Play className="w-6 h-6" />
+    }
+  }
+
+  return (
+    <div
+      className="relative min-h-screen bg-cover bg-center bg-no-repeat"
+      style={{
+        backgroundImage: `url('/jungle-adventure-background.jpg')`,
+      }}
+    >
+      <div className="absolute inset-0 bg-gradient-to-br from-amber-900/30 via-orange-900/20 to-yellow-900/30"></div>
+
+      <div className="relative z-10 max-w-5xl mx-auto px-6 py-12 space-y-8">
+        {/* Header */}
+        <div className="flex items-center gap-4 mb-6">
+          <Button
+            variant="outline"
+            onClick={onBack}
+            className="border-amber-300 text-amber-700 hover:bg-amber-50"
+          >
+            ← Volver
+          </Button>
+          <h1 className="text-2xl font-bold text-white drop-shadow-md">
+            Empatía
+          </h1>
+          <div className="text-3xl animate-bounce">🦫</div>
+        </div>
+
+        {/* Grid de niveles */}
+        <div className="grid gap-8">
+          {levels.map((level) => {
+            
+            const isCompleted = userData.completedLevels.includes(level.id)
+            const isUnlocked =
+              level.id === 1 ||
+              userData.completedLevels.includes(level.id - 1)
+
+            
+            const medal = (level as any).medal
+const medalClass = medal ? medalStyles[medal] : ""
+            const typeLabel =
+              level.type === "combo" ? "roleplay + quiz" : level.type
+
+            return (
+              <Card
+                key={level.id}
+                className={`relative overflow-hidden rounded-2xl shadow-xl transition-all duration-300
+                   ${isUnlocked ? "cursor-pointer hover:scale-[1.02]" : "opacity-50"}
+                  ${medalClass || "border-amber-200 bg-white/90 backdrop-blur-md"}`}
+              >
+                {/* Fondo solo si no hay medalla */}
+                 {!medal && (
+                  <div
+                  className="absolute inset-0 opacity-20"
+                  style={{
+                    backgroundImage: `url('${levelBackgrounds[level.world || "selva"]}')`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+                  }}
+                   />
+                     )}
+                
+
+                <CardContent className="p-6 relative z-10">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="relative">
+                        {isCompleted ? (
+                          <div className="relative">
+                            <CheckCircle className="w-12 h-12 text-green-500" />
+                            <div className="absolute -top-1 -right-1 text-xl">
+                              ✨
+                            </div>
+                          </div>
+                        ) : isUnlocked ? (
+                          <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-600 rounded-full flex items-center justify-center text-white font-bold shadow-lg">
+                            {level.id}
+                          </div>
+                        ) : (
+                          <Lock className="w-12 h-12 text-gray-400" />
+                        )}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          {getLevelIcon(level.type)}
+                          <h3 className="text-lg font-bold text-amber-800">
+                            {level.title}
+                          </h3>
+                        </div>
+                        <div className="flex items-center gap-4 text-sm text-amber-600">
+                          <span>⏱️ {level.duration} min</span>
+                          <span>⭐ {level.xpReward} XP</span>
+                          <span>🪙 {level.coinReward} monedas</span>
+                          <Badge
+                            variant="secondary"
+                            className="lowercase"
+                          >
+                            {typeLabel}
+                          </Badge>
+                          {medal && (
+  <Badge className={`capitalize font-bold ${medalClass}`}>
+    {medal}
+  </Badge>
+)}
+                        </div>
+                      </div>
+                    </div>
+
+                    {isUnlocked && (
+                      <Button
+                        onClick={() => onStartLevel(level.id)}
+                        disabled={!isUnlocked}
+                        className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white shadow-lg"
+                      >
+                        {isCompleted ? "Repetir" : "Jugar"}
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
+      </div>
+    </div>
   )
 }
 </file>
@@ -3248,10 +3445,11 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import LoginButton from "@/components/LoginButton"
 import Dashboard from "@/components/Dashboard"
-import { allLevels } from "../lib/levels"
+import { allLevels } from "@/lib/levels/index"
 import { updateStreak } from "@/lib/progress"
 import { useAuth } from "@/components/AuthProvider"
 import { useRouter } from "next/navigation"
+import CourseIntroModal from "@/components/CourseIntroModal"
 
 import {
   Trophy,
@@ -3311,8 +3509,8 @@ const initialUserData: UserData = {
 const courses: Course[] = [
   {
     id: "communication-v1",
-    title: "Comunicación Efectiva",
-    description: "Domina el arte de comunicarte con confianza y empatía",
+    title: "Empatia",
+    description: "Entrenamiento: La aventura de la empatía.",
     icon: "💬",
     color: "from-amber-400 to-orange-500",
     totalLevels: 12,
@@ -3363,8 +3561,8 @@ const courses: Course[] = [
 
 const communicationLevels: Level[] = [
   { id: 1, title: "Primeros Encuentros", type: "roleplay", duration: 8, xpReward: 50, coinReward: 20, isCompleted: false, isUnlocked: true, world: "campamento" },
-  { id: 2, title: "Escucha Activa", type: "quiz", duration: 6, xpReward: 40, coinReward: 15, isCompleted: false, isUnlocked: true, world: "montana" },
-  { id: 3, title: "Comunicacion no verbal", type: "roleplay", duration: 10, xpReward: 60, coinReward: 25, isCompleted: false, isUnlocked: true, world: "rio" },
+  { id: 2, title: "Escucha Activa", type: "quiz", duration: 6, xpReward: 40, coinReward: 15, isCompleted: false, isUnlocked: false, world: "montana" },
+  { id: 3, title: "Comunicacion no verbal", type: "roleplay", duration: 10, xpReward: 60, coinReward: 25, isCompleted: false, isUnlocked: false, world: "rio" },
   { id: 4, title: "Manejo de Conflictos", type: "quiz", duration: 12, xpReward: 80, coinReward: 30, isCompleted: false, isUnlocked: false, world: "mercado" },
   { id: 5, title: "Presentaciones Efectivas", type: "roleplay", duration: 15, xpReward: 100, coinReward: 40, isCompleted: false, isUnlocked: false, world: "selva" },
 ]
@@ -3503,6 +3701,8 @@ export default function Nu9veAcademy() {
   const [lifeTimer, setLifeTimer] = useState(0)
   const [currentLevel, setCurrentLevel] = useState<number | null>(null)
   const router = useRouter()
+  const [introCourseId, setIntroCourseId] = useState<string | null>(null)
+
   // ====== Persistencia local (hidratar + guardar) ======
   const hydratedRef = useRef(false)
   const lsDebounce = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -3593,6 +3793,7 @@ export default function Nu9veAcademy() {
         gems: prev.gems + rewards.gems,
         xp: prev.xp + rewards.xp,
         lastDailyChest: new Date().toDateString(),
+        
       }))
       setShowDailyChest(false)
       setChestAnimation(false)
@@ -3611,19 +3812,28 @@ export default function Nu9veAcademy() {
   const loseLife = () => setUserData((prev) => ({ ...prev, lives: Math.max(0, prev.lives - 1) }))
 
   // ✅ completar nivel
-  const handleCompleteLevel = (levelId: number, xp: number, coins: number, badges: string[]) => {
-    setUserData((prev) => {
-      const newCompleted = prev.completedLevels.includes(levelId)
-        ? prev.completedLevels
-        : [...prev.completedLevels, levelId]
-      return { ...prev, xp: prev.xp + xp, coins: prev.coins + coins, completedLevels: newCompleted }
-    })
-    const nextLevelIndex = communicationLevels.findIndex((level) => level.id === levelId + 1)
-    if (nextLevelIndex !== -1) {
-      communicationLevels[nextLevelIndex].isUnlocked = true
-    }
-    setCurrentView("course")
+  const handleCompleteLevel = (levelId: number, xp: number, coins: number, medal: string) => {
+  setUserData(prev => ({
+  ...prev,
+  completedLevels: Array.from(new Set([...prev.completedLevels, levelId])),
+  badges: [
+    ...prev.badges.filter(b => b.levelId !== levelId),
+    { levelId, medal }, // 👈 Asegúrate que esto se guarda
+  ],
+  coins: prev.coins + coins,
+  xp: prev.xp + xp,
+}))
+
+   // 🔓 desbloquea siguiente nivel
+  const nextLevelIndex = communicationLevels.findIndex(
+    (level) => level.id === levelId + 1
+  )
+  if (nextLevelIndex !== -1) {
+    communicationLevels[nextLevelIndex].isUnlocked = true
   }
+
+  setCurrentView("course")
+}
 
   // ==========================
   // 🔄 SINCRONIZACIÓN FIRESTORE
@@ -3830,9 +4040,25 @@ export default function Nu9veAcademy() {
                   return false
                 }).length,
               }))}
-              onCourseSelect={() => setCurrentView("course")}
+              onCourseSelect={(courseId: string) => setIntroCourseId(courseId)}
+              
             />
-          </div>
+                  {/* ...tu contenido normal de dashboard, curso o nivel... */}
+
+      {introCourseId && (
+        <CourseIntroModal
+          courseId={introCourseId}
+          onClose={() => setIntroCourseId(null)}
+          onStart={() => {
+            setIntroCourseId(null)
+            setCurrentView("course")
+          }}
+        />
+      )}
+    </div>
+  
+
+          
         </div>
       </div>
     )
@@ -4093,11 +4319,15 @@ export default function Nu9veAcademy() {
             {currentView === "dashboard" && renderDashboard()}
             {currentView === "course" && (
               <CourseList
-                levels={communicationLevels}
-                userData={userData}
-                onBack={() => setCurrentView("dashboard")}
-                onStartLevel={(id) => startLevel(id)}
-              />
+  levels={communicationLevels.map(l => {
+    const badge = userData.badges.find(b => b.levelId === l.id)
+    return { ...l, medal: badge?.medal }
+  })}
+  userData={userData}
+  onBack={() => setCurrentView("dashboard")}
+  onStartLevel={(id) => startLevel(id)}
+/>
+
             )}
             {currentView === "shop" && renderShop()}
             {currentView === "profile" && renderProfile()}
@@ -4105,7 +4335,7 @@ export default function Nu9veAcademy() {
               <LevelComponent
                 levelId={allLevels[currentLevel - 1].id}
                 userData={userData}
-                onComplete={(xp, coins, badges) => handleCompleteLevel(currentLevel, xp, coins, badges)}
+                onComplete={handleCompleteLevel}
                 onBack={() => setCurrentView("course")}
                 onLoseLife={loseLife}
               />
@@ -4114,173 +4344,6 @@ export default function Nu9veAcademy() {
         </div>
       )}
     </>
-  )
-}
-</file>
-
-<file path="components/CourseList.tsx">
-"use client"
-
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import {
-  MessageCircle,
-  Volume2,
-  Eye,
-  Users,
-  Presentation,
-  Play,
-  Lock,
-  CheckCircle,
-} from "lucide-react"
-
-interface Level {
-  id: number
-  title: string
-  type: "roleplay" | "quiz" | "story" | "video" | "interactive"
-  duration: number
-  xpReward: number
-  coinReward: number
-  isCompleted: boolean
-  isUnlocked: boolean
-}
-
-interface CourseListProps {
-  levels: Level[]
-  userData: any
-  onBack: () => void
-  onStartLevel: (levelId: number) => void
-}
-
-export default function CourseList({ levels, userData, onBack, onStartLevel }: CourseListProps) {
-  const getLevelIcon = (type: string) => {
-    switch (type) {
-      case "roleplay":
-        return <MessageCircle className="w-6 h-6 text-blue-500" />
-      case "interactive":
-        return <Volume2 className="w-6 h-6 text-green-500" />
-      case "video":
-        return <Eye className="w-6 h-6 text-purple-500" />
-      case "story":
-        return <Users className="w-6 h-6 text-orange-500" />
-      case "quiz":
-        return <Presentation className="w-6 h-6 text-red-500" />
-      default:
-        return <Play className="w-6 h-6" />
-    }
-  }
-
-  return (
-    <div
-      className="relative min-h-screen bg-cover bg-center bg-no-repeat"
-      style={{
-        backgroundImage: `url('/jungle-adventure-background.jpg')`, // cambia por el fondo que quieras
-      }}
-    >
-      {/* Degradado encima del fondo */}
-      <div className="absolute inset-0 bg-gradient-to-br from-amber-900/30 via-orange-900/20 to-yellow-900/30"></div>
-
-      <div className="relative z-10 max-w-5xl mx-auto px-6 py-12 space-y-8">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-6">
-          <Button
-            variant="outline"
-            onClick={onBack}
-            className="border-amber-300 text-amber-700 hover:bg-amber-50"
-          >
-            ← Volver
-          </Button>
-          <h1 className="text-2xl font-bold text-white drop-shadow-md">
-            Comunicación Efectiva
-          </h1>
-          <div className="text-3xl animate-bounce">🦫</div>
-        </div>
-
-        {/* Grid de niveles */}
-        <div className="grid gap-8">
-          {levels.map((level) => {
-            const isCompleted = userData.completedLevels.includes(level.id)
-// 🔹 Detectar medalla obtenida
-const lastBadge = userData.badges.findLast?.(
-  (b: string) => ["diamante", "oro", "plata", "bronce"].includes(b)
-)
-
-let medalClass = ""
-if (lastBadge === "diamante") medalClass = "border-cyan-400 bg-cyan-50 animate-pulse-glow"
-else if (lastBadge === "oro") medalClass = "border-yellow-400 bg-yellow-50"
-else if (lastBadge === "plata") medalClass = "border-gray-400 bg-gray-50"
-else if (lastBadge === "bronce") medalClass = "border-orange-400 bg-orange-50"
-
-            return (
-              <Card
-  key={level.id}
-  onClick={() => {
-    if (level.isUnlocked) onStartLevel(level.id)
-  }}
-  className={`relative overflow-hidden rounded-2xl shadow-xl transition-all duration-300
-  ${level.isUnlocked ? "cursor-pointer hover:scale-[1.02]" : "opacity-50"}
-  ${isCompleted ? medalClass : "border-amber-200 bg-white/90 backdrop-blur-md"}`}
->
-                <div
-                  className="absolute inset-0 opacity-15"
-                  style={{
-                    backgroundImage: `url('/assets/worlds/selva.png')`, // 👈 aquí puedes cambiar por mundo específico
-                    backgroundSize: "cover",
-                    backgroundPosition: "center",
-                  }}
-                ></div>
-
-                <CardContent className="p-6 relative z-10">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="relative">
-                        {isCompleted ? (
-                          <div className="relative">
-                            <CheckCircle className="w-12 h-12 text-green-500" />
-                            <div className="absolute -top-1 -right-1 text-xl">✨</div>
-                          </div>
-                        ) : level.isUnlocked ? (
-                          <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-600 rounded-full flex items-center justify-center text-white font-bold shadow-lg">
-                            {level.id}
-                          </div>
-                        ) : (
-                          <Lock className="w-12 h-12 text-gray-400" />
-                        )}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          {getLevelIcon(level.type)}
-                          <h3 className="text-lg font-bold text-amber-800">{level.title}</h3>
-                        </div>
-                        <div className="flex items-center gap-4 text-sm text-amber-600">
-                          <span>⏱️ {level.duration} min</span>
-                          <span>⭐ {level.xpReward} XP</span>
-                          <span>🪙 {level.coinReward} monedas</span>
-                          <Badge variant="secondary" className="lowercase">
-                            {level.type}
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-
-                    {level.isUnlocked && (
-                      <Button
-                        onClick={() => onStartLevel(level.id)}
-                        disabled={!level.isUnlocked}
-                        className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white shadow-lg"
-                      >
-                        {isCompleted ? "Repetir" : "Jugar"}
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
-      </div>
-    </div>
   )
 }
 </file>
@@ -4301,7 +4364,12 @@ interface LevelComponentProps {
   userData: UserData
   onBack: () => void
   onLoseLife: () => void
-  onComplete: (xp: number, coins: number, badges: string[]) => void
+  onComplete: (
+    levelId: number,
+    xp: number,
+    coins: number,
+    medal: string
+  ) => void
 }
 
 export default function LevelComponent({
@@ -4320,37 +4388,41 @@ export default function LevelComponent({
 
   // --- estados ---
   const [closingMsg, setClosingMsg] = useState<string | null>(null)
-  const [phase, setPhase] = useState<"intro" | "roleplay" | "quiz" | "end">("intro")
+  const [phase, setPhase] = useState<
+    "intro" | "roleplay" | "quiz" | "end"
+  >("intro")
   const [currentIndex, setCurrentIndex] = useState(0)
   const [score, setScore] = useState(0)
   const [hintUsed, setHintUsed] = useState(false)
   const [showFeedback, setShowFeedback] = useState(false)
   const [isCorrect, setIsCorrect] = useState(false)
+  const [finalMedal, setFinalMedal] = useState<string | null>(null)
 
   // --- mascota equipada ---
- const currentPet = pets.find((p) => p.id === userData.currentPet)
+  const currentPet = pets.find((p) => p.id === userData.currentPet)
 
+  // --- finalización con reglas exactas ---
+  const completeLevel = () => {
+    let medal: "diamante" | "oro" | "plata" | "bronce" = "bronce"
+    if (score === 260) medal = "diamante" // perfecto
+    else if (score >= 200) medal = "oro" // 259–200
+    else if (score >= 100) medal = "plata" // 199–100
+    else medal = "bronce" // 99–0
 
- const completeLevel = () => {
-  let medal = "bronce"
-  if (score >= 100) medal = "diamante"
-  else if (score >= 85) medal = "oro"
-  else if (score >= 50) medal = "plata"
+    setFinalMedal(medal)
 
-  // 🔹 Guardar progreso
-  onComplete(levelData.xpReward, levelData.coinReward, [medal])
+    onComplete(levelId, levelData.xpReward, levelData.coinReward, medal)
 
-  // 🔹 Mostrar cierre de misión (si existe)
-  let closingMessage = null
-  if (levelData.roleplay?.closing) {
-    closingMessage = score >= 80
-      ? levelData.roleplay.closing.success
-      : levelData.roleplay.closing.fail
+    let closingMessage = null
+    if (levelData.roleplay?.closing) {
+      closingMessage =
+        score >= 80
+          ? levelData.roleplay.closing.success
+          : levelData.roleplay.closing.fail
+    }
+    setPhase("end")
+    setClosingMsg(closingMessage)
   }
-
-  setPhase("end")
-  setClosingMsg(closingMessage)
-}
 
   return (
     <div
@@ -4369,8 +4441,12 @@ export default function LevelComponent({
           >
             ← Volver
           </Button>
-          <h1 className="text-2xl font-bold text-white drop-shadow-md">{levelData.title}</h1>
-          {currentPet && <div className="text-3xl animate-bounce">{currentPet.icon}</div>}
+          <h1 className="text-2xl font-bold text-white drop-shadow-md">
+            {levelData.title}
+          </h1>
+          {currentPet && (
+            <div className="text-3xl animate-bounce">{currentPet.icon}</div>
+          )}
           <div className="flex items-center gap-4 ml-auto">
             {/* vidas */}
             <div className="flex items-center gap-1">
@@ -4382,7 +4458,9 @@ export default function LevelComponent({
             {/* puntaje */}
             <div className="flex items-center gap-1">
               <Star className="w-5 h-5 text-yellow-400" />
-              <span className="font-bold text-yellow-300">{score} pts</span>
+              <span className="font-bold text-yellow-300">
+                {score} pts
+              </span>
             </div>
           </div>
         </div>
@@ -4391,8 +4469,12 @@ export default function LevelComponent({
         {phase === "intro" && (
           <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
             <div className="bg-white/95 rounded-xl shadow-lg max-w-2xl w-full p-8 animate-fadeIn">
-              <h2 className="text-2xl font-bold text-amber-800">{levelData.intro.title}</h2>
-              <p className="mt-3 text-gray-800 leading-relaxed">{levelData.intro.scenario}</p>
+              <h2 className="text-2xl font-bold text-amber-800">
+                {levelData.intro.title}
+              </h2>
+              <p className="mt-3 text-gray-800 leading-relaxed">
+                {levelData.intro.scenario}
+              </p>
 
               <div className="mt-6 flex justify-end gap-3">
                 <Button variant="outline" onClick={onBack}>
@@ -4416,8 +4498,12 @@ export default function LevelComponent({
         {phase === "roleplay" && (
           <div className="mb-6 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              {currentPet && <div className="text-3xl">{currentPet.icon}</div>}
-              <p className="text-sm text-white">{currentPet?.name} tiene una pista para ti</p>
+              {currentPet && (
+                <div className="text-3xl">{currentPet.icon}</div>
+              )}
+              <p className="text-sm text-white">
+                {currentPet?.name} tiene una pista para ti
+              </p>
             </div>
             {!hintUsed && (
               <Button
@@ -4432,14 +4518,16 @@ export default function LevelComponent({
           </div>
         )}
         {hintUsed && phase === "roleplay" && currentPet && (
-  <div className="mb-6 flex items-start gap-3 p-4 bg-white/80 border border-blue-300 rounded-lg shadow-md">
-    <div className="text-3xl">{currentPet.icon}</div>
-    <div>
-      <p className="font-bold text-amber-800">{currentPet.name} te ayuda:</p>
-      <p className="text-blue-800 text-sm">💡 {levelData.hint}</p>
-    </div>
-  </div>
-)}
+          <div className="mb-6 flex items-start gap-3 p-4 bg-white/80 border border-blue-300 rounded-lg shadow-md">
+            <div className="text-3xl">{currentPet.icon}</div>
+            <div>
+              <p className="font-bold text-amber-800">
+                {currentPet.name} te ayuda:
+              </p>
+              <p className="text-blue-800 text-sm">💡 {levelData.hint}</p>
+            </div>
+          </div>
+        )}
 
         {/* --- ROLEPLAY --- */}
         {phase === "roleplay" && (
@@ -4451,29 +4539,34 @@ export default function LevelComponent({
               </p>
 
               <div className="space-y-3 mt-4">
-                {levelData.roleplay.steps[currentIndex].options.map((opt: any, i: number) => (
-                  <Button
-                    key={i}
-                    onClick={() => {
-                      setScore((s) => s + opt.points)
-                      if (opt.points >= 90 || opt.correct) {
-                        playSuccess()
-                      } else {
-                        playFail()
-                      }
+                {levelData.roleplay.steps[currentIndex].options.map(
+                  (opt: any, i: number) => (
+                    <Button
+                      key={i}
+                      onClick={() => {
+                        setScore((s) => s + opt.points)
+                        if (opt.points >= 90 || opt.correct) {
+                          playSuccess()
+                        } else {
+                          playFail()
+                        }
 
-                      if (currentIndex < levelData.roleplay.steps.length - 1) {
-                        setCurrentIndex((i) => i + 1)
-                      } else {
-                        setPhase("quiz")
-                        setCurrentIndex(0)
-                      }
-                    }}
-                    className="w-full text-left justify-start p-4 h-auto bg-amber-700 text-white"
-                  >
-                    {opt.text}
-                  </Button>
-                ))}
+                        if (
+                          currentIndex <
+                          levelData.roleplay.steps.length - 1
+                        ) {
+                          setCurrentIndex((i) => i + 1)
+                        } else {
+                          setPhase("quiz")
+                          setCurrentIndex(0)
+                        }
+                      }}
+                      className="w-full text-left justify-start p-4 h-auto bg-amber-700 text-white"
+                    >
+                      {opt.text}
+                    </Button>
+                  )
+                )}
               </div>
             </CardContent>
           </Card>
@@ -4490,49 +4583,61 @@ export default function LevelComponent({
 
               {!showFeedback ? (
                 <div className="space-y-3 mt-4">
-                  {levelData.quiz.questions[currentIndex].options.map((opt: any, i: number) => (
-                    <Button
-                      key={i}
-                      onClick={() => {
-                        setIsCorrect(opt.correct)
-                        setShowFeedback(true)
-                        if (opt.correct) {
-                          playSuccess()
-                          setScore((s) => s + 20)
-                        } else {
-                          playFail()
-                          onLoseLife()
-                        }
-                      }}
-                      className="w-full text-left justify-start p-4 h-auto bg-amber-700 text-white"
-                    >
-                      {opt.text}
-                    </Button>
-                  ))}
+                  {levelData.quiz.questions[currentIndex].options.map(
+                    (opt: any, i: number) => (
+                      <Button
+                        key={i}
+                        onClick={() => {
+                          setIsCorrect(opt.correct)
+                          setShowFeedback(true)
+                          if (opt.correct) {
+                            playSuccess()
+                            setScore((s) => s + 20)
+                          } else {
+                            playFail()
+                            onLoseLife()
+                          }
+                        }}
+                        className="w-full text-left justify-start p-4 h-auto bg-amber-700 text-white"
+                      >
+                        {opt.text}
+                      </Button>
+                    )
+                  )}
                 </div>
               ) : (
                 <div className="mt-4">
                   <div
                     className={`p-4 rounded-lg border-2 ${
-                      isCorrect ? "bg-green-100 border-green-300" : "bg-red-100 border-red-300"
+                      isCorrect
+                        ? "bg-green-100 border-green-300"
+                        : "bg-red-100 border-red-300"
                     }`}
                   >
                     {isCorrect
-                      ? levelData.quiz.questions[currentIndex].feedback.correct
-                      : levelData.quiz.questions[currentIndex].feedback.incorrect}
+                      ? levelData.quiz.questions[currentIndex].feedback
+                          .correct
+                      : levelData.quiz.questions[currentIndex].feedback
+                          .incorrect}
                   </div>
                   <Button
                     onClick={() => {
-                      if (currentIndex < levelData.quiz.questions.length - 1) {
+                      if (
+                        currentIndex <
+                        levelData.quiz.questions.length - 1
+                      ) {
                         setCurrentIndex((i) => i + 1)
                         setShowFeedback(false)
                       } else {
                         completeLevel()
                       }
                     }}
-                    className={`mt-4 ${isCorrect ? "bg-green-500" : "bg-red-500"} text-white`}
+                    className={`mt-4 ${
+                      isCorrect ? "bg-green-500" : "bg-red-500"
+                    } text-white`}
                   >
-                    {currentIndex < levelData.quiz.questions.length - 1
+                    {currentIndex <
+                    levelData.quiz.questions.length - 1
                       ? "Siguiente"
                       : "Completar nivel"}
                   </Button>
@@ -4542,40 +4647,59 @@ export default function LevelComponent({
           </Card>
         )}
 
-        {/* --- FIN DEL NIVEL --- */}
-       {phase === "end" && (
-  <Card className="bg-white/80 border border-amber-200 p-6 text-center">
+       {/* --- FIN DEL NIVEL --- */}
+{phase === "end" && (
+  <Card className="bg-white/90 border border-amber-200 p-8 text-center shadow-2xl animate-fadeIn">
     <CardContent>
-      <h2 className="text-2xl font-bold text-amber-800 mb-2">¡Misión completada!</h2>
-      <p className="text-amber-700 mb-4">Tu puntaje final fue {score} puntos.</p>
+      <h2 className="text-3xl font-bold text-amber-800 mb-4">
+        ¡Misión completada!
+      </h2>
 
-      {/* Mensaje de cierre de misión */}
+      <p className="text-amber-700 mb-4 text-lg">
+        Tu puntaje final fue <span className="font-bold">{score}</span> puntos.
+      </p>
+
       {closingMsg && (
-        <p className="mb-4 text-amber-900 font-medium">{closingMsg}</p>
+        <p className="mb-6 text-amber-900 font-medium">{closingMsg}</p>
       )}
 
-      {/* Medalla */}
-      {score >= 100 && (
-        <p className="text-cyan-600 text-lg font-bold">🏅 Medalla Diamante</p>
+      {/* Mostrar medalla final calculada */}
+      {finalMedal && (
+        <div className="mb-6">
+          {finalMedal === "diamante" && (
+            <p className="text-cyan-600 text-xl font-bold">
+              💎 Medalla Diamante
+            </p>
+          )}
+          {finalMedal === "oro" && (
+            <p className="text-yellow-600 text-xl font-bold">
+              🥇 Medalla Oro
+            </p>
+          )}
+          {finalMedal === "plata" && (
+            <p className="text-gray-600 text-xl font-bold">
+              🥈 Medalla Plata
+            </p>
+          )}
+          {finalMedal === "bronce" && (
+            <p className="text-orange-700 text-xl font-bold">
+              🥉 Medalla Bronce
+            </p>
+          )}
+        </div>
       )}
-      {score < 100 && score >= 85 && (
-        <p className="text-yellow-600 text-lg font-bold">🏅 Medalla Oro</p>
-      )}
-      {score < 85 && score >= 50 && (
-        <p className="text-gray-600 text-lg font-bold">🥈 Medalla Plata</p>
-      )}
-      {score < 50 && <p className="text-orange-700 text-lg font-bold">🥉 Medalla Bronce</p>}
 
-      <div className="mt-6">
-        <Button onClick={onBack} className="bg-amber-600 text-white">
-          Volver al mapa
-        </Button>
-      </div>
+      <Button
+        onClick={onBack}
+        className="bg-amber-600 hover:bg-amber-700 text-white px-6 py-3 text-lg rounded-xl shadow-lg"
+      >
+        Volver al mapa
+      </Button>
     </CardContent>
   </Card>
 )}
 
-
+        
       </div>
     </div>
   )
