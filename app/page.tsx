@@ -725,77 +725,13 @@ export default function Nu9veAcademy() {
           <div className="text-3xl animate-bounce">🦫</div>
         </div>
 
-        <div className="relative">
-          <div className="grid gap-6">
-            {communicationLevels.map((level, index) => {
-              const isUnlocked = index === 0 || userData.completedLevels.includes(index)
-              const isCompleted = userData.completedLevels.includes(level.id)
-              const displayType = level.type === "roleplay" ? "roleplay" : "quiz"
+      <CourseList
+  levels={communicationLevels}
+  userData={userData}
+  onBack={() => setCurrentView("dashboard")}
+  onStartLevel={(id) => startLevel(id)}
+/>
 
-              return (
-                <Card
-                  key={level.id}
-                  className={`relative overflow-hidden transition-all duration-300 ${isUnlocked ? "cursor-pointer hover:shadow-xl hover:scale-[1.02]" : "opacity-50"
-                    } ${isCompleted ? "border-green-500 bg-green-50 shadow-green-200 shadow-lg" : "border-amber-200"}`}
-                >
-                  <div
-                    className="absolute inset-0 opacity-20"
-                    style={{ backgroundImage: `url('/--getlevelbackground-level-id--.png')`, backgroundSize: "cover", backgroundPosition: "center" }}
-                  ></div>
-
-                  <CardContent className="p-6 relative z-10">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="relative">
-                          {isCompleted ? (
-                            <div className="relative">
-                              <CheckCircle className="w-12 h-12 text-green-500" />
-                              <div className="absolute -top-1 -right-1 text-xl">✨</div>
-                            </div>
-                          ) : isUnlocked ? (
-                            <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-600 rounded-full flex items-center justify-center text-white font-bold shadow-lg">
-                              {level.id}
-                            </div>
-                          ) : (
-                            <Lock className="w-12 h-12 text-gray-400" />
-                          )}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            {getLevelIcon(level.type)}
-                            <h3 className="text-lg font-bold text-amber-800">{level.title}</h3>
-                          </div>
-                          <div className="flex items-center gap-4 text-sm text-amber-600">
-                            <span>⏱️ {level.duration} min</span>
-                            <span>⭐ {level.xpReward} XP</span>
-                            <span>🪙 {level.coinReward} monedas</span>
-                            <Badge variant="secondary" className="lowercase">{displayType}</Badge>
-                          </div>
-                          <p className="text-sm text-amber-600 mt-2">
-                            {level.id === 1 && "Aprende a hacer una primera impresión positiva"}
-                            {level.id === 2 && "Técnicas para escuchar activamente"}
-                            {level.id === 3 && "Domina el lenguaje corporal efectivo"}
-                            {level.id === 4 && "Resuelve conflictos con confianza"}
-                            {level.id === 5 && "Presenta ideas de manera impactante"}
-                          </p>
-                        </div>
-                      </div>
-                      {isUnlocked && (
-                        <Button
-                          onClick={() => startLevel(level.id)}
-                          disabled={!isUnlocked}
-                          className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white shadow-lg"
-                        >
-                          {isCompleted ? "Repetir" : "Jugar"}
-                        </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              )
-            })}
-          </div>
-        </div>
       </div>
     )
   }
