@@ -16,6 +16,7 @@ import Dashboard from "@/components/Dashboard"
 import { allLevels } from "../lib/levels"
 import { updateStreak } from "@/lib/progress"
 import { useAuth } from "@/components/AuthProvider"
+import { useRouter } from "next/navigation"
 
 import {
   Trophy,
@@ -266,7 +267,7 @@ export default function Nu9veAcademy() {
   const [chestAnimation, setChestAnimation] = useState(false)
   const [lifeTimer, setLifeTimer] = useState(0)
   const [currentLevel, setCurrentLevel] = useState<number | null>(null)
-
+  const router = useRouter()
   // ====== Persistencia local (hidratar + guardar) ======
   const hydratedRef = useRef(false)
   const lsDebounce = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -370,10 +371,8 @@ export default function Nu9veAcademy() {
   }
 
   const startLevel = (levelId: number) => {
-    setCurrentLevel(levelId)
-    setCurrentView("level")
-  }
-
+  router.push(`/level/${levelId}`)
+}
   const loseLife = () => setUserData((prev) => ({ ...prev, lives: Math.max(0, prev.lives - 1) }))
 
   // ✅ completar nivel

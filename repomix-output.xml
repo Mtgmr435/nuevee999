@@ -330,38 +330,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 <file path="app/level/[id]/page.tsx">
 "use client"
 export const dynamic = "force-dynamic"
-import { useRouter } from "next/navigation"
+
+import { useRouter, useParams } from "next/navigation"
 import LevelComponent from "@/components/LevelComponent"
-import { Level, UserData } from "@/lib/userTypes"
 import { useState } from "react"
+import { UserData } from "@/lib/userTypes"
+import { levelsMap } from "@/lib/levels/index"
 
-// 🔹 Definición de niveles de ejemplo (puedes moverlo a un lib si quieres)
-const communicationLevels: Level[] = [
-  {
-    id: 1,
-    title: "Primeros Encuentros",
-    type: "roleplay",
-    duration: 8,
-    xpReward: 50,
-    coinReward: 20,
-    isCompleted: false,
-    isUnlocked: true,
-    world: "selva",
-  },
-  {
-    id: 2,
-    title: "Escucha Activa",
-    type: "quiz",
-    duration: 6,
-    xpReward: 40,
-    coinReward: 15,
-    isCompleted: false,
-    isUnlocked: true,
-    world: "montana",
-  },
-]
-
-// 🔹 Datos iniciales del usuario (puedes reemplazar con Firestore si ya tienes auth)
 const initialUserData: UserData = {
   level: 1,
   xp: 0,
@@ -372,24 +347,19 @@ const initialUserData: UserData = {
   lastDailyChest: null,
   completedLevels: [],
   badges: [],
-  currentPet: "baby-capybara",
+  currentPet: "baby-capybara",   // 👈 usa el nombre correcto del tipo
   unlockedPets: ["baby-capybara"],
 }
 
-interface LevelPageProps {
-  params: {
-    id: string
-  }
-}
-
-export default function LevelPage({ params }: LevelPageProps) {
+export default function LevelPage() {
   const router = useRouter()
-  const levelId = Number.parseInt(params.id)
-  const level = communicationLevels.find((lvl) => lvl.id === levelId)
+  const params = useParams()
+  const levelId = Number(params?.id)
 
+  const levelData = levelsMap[levelId]
   const [userData, setUserData] = useState<UserData>(initialUserData)
 
-  if (!level) {
+  if (!levelData) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -410,10 +380,11 @@ export default function LevelPage({ params }: LevelPageProps) {
       ...prev,
       xp: prev.xp + xp,
       coins: prev.coins + coins,
-      completedLevels: [...prev.completedLevels, level.id],
+      completedLevels: [...prev.completedLevels, levelId],
       badges: [...prev.badges, ...badges],
     }))
-    router.push("/") // 👈 al completar, regresa al inicio (puedes cambiarlo a dashboard)
+    // 👇 si prefieres que se quede en el mapa de niveles en lugar de ir al inicio, cambia a "/dashboard"
+    router.push("/")
   }
 
   const handleBack = () => {
@@ -429,12 +400,12 @@ export default function LevelPage({ params }: LevelPageProps) {
 
   return (
     <LevelComponent
-  levelId={level.id}             // antes tenías level={level}
-  userData={userData}
-  onComplete={handleComplete}
-  onBack={handleBack}
-  onLoseLife={handleLoseLife}
-/>
+      levelId={levelId}
+      userData={userData}
+      onComplete={handleComplete}
+      onBack={handleBack}
+      onLoseLife={handleLoseLife}
+    />
   )
 }
 </file>
@@ -1605,14 +1576,27 @@ export default function CourseList({ levels, userData, onBack, onStartLevel }: C
         <div className="grid gap-8">
           {levels.map((level) => {
             const isCompleted = userData.completedLevels.includes(level.id)
+// 🔹 Detectar medalla obtenida
+const lastBadge = userData.badges.findLast?.(
+  (b: string) => ["diamante", "oro", "plata", "bronce"].includes(b)
+)
+
+let medalClass = ""
+if (lastBadge === "diamante") medalClass = "border-cyan-400 bg-cyan-50 animate-pulse-glow"
+else if (lastBadge === "oro") medalClass = "border-yellow-400 bg-yellow-50"
+else if (lastBadge === "plata") medalClass = "border-gray-400 bg-gray-50"
+else if (lastBadge === "bronce") medalClass = "border-orange-400 bg-orange-50"
 
             return (
               <Card
-                key={level.id}
-                className={`relative overflow-hidden rounded-2xl shadow-xl transition-all duration-300
-                ${level.isUnlocked ? "cursor-pointer hover:scale-[1.02]" : "opacity-50"}
-                ${isCompleted ? "border-green-500 bg-green-50" : "border-amber-200 bg-white/90 backdrop-blur-md"}`}
-              >
+  key={level.id}
+  onClick={() => {
+    if (level.isUnlocked) onStartLevel(level.id)
+  }}
+  className={`relative overflow-hidden rounded-2xl shadow-xl transition-all duration-300
+  ${level.isUnlocked ? "cursor-pointer hover:scale-[1.02]" : "opacity-50"}
+  ${isCompleted ? medalClass : "border-amber-200 bg-white/90 backdrop-blur-md"}`}
+>
                 <div
                   className="absolute inset-0 opacity-15"
                   style={{
@@ -1846,6 +1830,7 @@ export default function LevelComponent({
   const playFail = useSound("/sounds/fail.mp3")
 
   // --- estados ---
+  const [closingMsg, setClosingMsg] = useState<string | null>(null)
   const [phase, setPhase] = useState<"intro" | "roleplay" | "quiz" | "end">("intro")
   const [currentIndex, setCurrentIndex] = useState(0)
   const [score, setScore] = useState(0)
@@ -1854,17 +1839,29 @@ export default function LevelComponent({
   const [isCorrect, setIsCorrect] = useState(false)
 
   // --- mascota equipada ---
-  const currentPet = pets.find((p) => p.id === (userData as any).equippedPet)
+ const currentPet = pets.find((p) => p.id === userData.currentPet)
 
-  const completeLevel = () => {
-    let medal = "bronce"
-    if (score >= 100) medal = "diamante"
-    else if (score >= 85) medal = "oro"
-    else if (score >= 50) medal = "plata"
 
-    onComplete(levelData.xpReward, levelData.coinReward, [medal])
-    setPhase("end")
+ const completeLevel = () => {
+  let medal = "bronce"
+  if (score >= 100) medal = "diamante"
+  else if (score >= 85) medal = "oro"
+  else if (score >= 50) medal = "plata"
+
+  // 🔹 Guardar progreso
+  onComplete(levelData.xpReward, levelData.coinReward, [medal])
+
+  // 🔹 Mostrar cierre de misión (si existe)
+  let closingMessage = null
+  if (levelData.roleplay?.closing) {
+    closingMessage = score >= 80
+      ? levelData.roleplay.closing.success
+      : levelData.roleplay.closing.fail
   }
+
+  setPhase("end")
+  setClosingMsg(closingMessage)
+}
 
   return (
     <div
@@ -1945,11 +1942,15 @@ export default function LevelComponent({
             )}
           </div>
         )}
-        {hintUsed && phase === "roleplay" && (
-          <div className="mb-6 p-3 bg-blue-50/70 border border-blue-200 rounded-lg">
-            <p className="text-blue-800 text-sm">💡 {levelData.hint}</p>
-          </div>
-        )}
+        {hintUsed && phase === "roleplay" && currentPet && (
+  <div className="mb-6 flex items-start gap-3 p-4 bg-white/80 border border-blue-300 rounded-lg shadow-md">
+    <div className="text-3xl">{currentPet.icon}</div>
+    <div>
+      <p className="font-bold text-amber-800">{currentPet.name} te ayuda:</p>
+      <p className="text-blue-800 text-sm">💡 {levelData.hint}</p>
+    </div>
+  </div>
+)}
 
         {/* --- ROLEPLAY --- */}
         {phase === "roleplay" && (
@@ -2053,32 +2054,39 @@ export default function LevelComponent({
         )}
 
         {/* --- FIN DEL NIVEL --- */}
-        {phase === "end" && (
-          <Card className="bg-white/80 border border-amber-200 p-6 text-center">
-            <CardContent>
-              <h2 className="text-2xl font-bold text-amber-800 mb-2">¡Nivel completado!</h2>
-              <p className="text-amber-700 mb-4">Tu puntaje final fue {score} puntos.</p>
+       {phase === "end" && (
+  <Card className="bg-white/80 border border-amber-200 p-6 text-center">
+    <CardContent>
+      <h2 className="text-2xl font-bold text-amber-800 mb-2">¡Misión completada!</h2>
+      <p className="text-amber-700 mb-4">Tu puntaje final fue {score} puntos.</p>
 
-              {/* Medalla */}
-              {score >= 100 && (
-                <p className="text-cyan-600 text-lg font-bold">🏅 Medalla Diamante</p>
-              )}
-              {score < 100 && score >= 85 && (
-                <p className="text-yellow-600 text-lg font-bold">🏅 Medalla Oro</p>
-              )}
-              {score < 85 && score >= 50 && (
-                <p className="text-gray-600 text-lg font-bold">🥈 Medalla Plata</p>
-              )}
-              {score < 50 && <p className="text-orange-700 text-lg font-bold">🥉 Medalla Bronce</p>}
+      {/* Mensaje de cierre de misión */}
+      {closingMsg && (
+        <p className="mb-4 text-amber-900 font-medium">{closingMsg}</p>
+      )}
 
-              <div className="mt-6">
-                <Button onClick={onBack} className="bg-amber-600 text-white">
-                  Volver al mapa
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+      {/* Medalla */}
+      {score >= 100 && (
+        <p className="text-cyan-600 text-lg font-bold">🏅 Medalla Diamante</p>
+      )}
+      {score < 100 && score >= 85 && (
+        <p className="text-yellow-600 text-lg font-bold">🏅 Medalla Oro</p>
+      )}
+      {score < 85 && score >= 50 && (
+        <p className="text-gray-600 text-lg font-bold">🥈 Medalla Plata</p>
+      )}
+      {score < 50 && <p className="text-orange-700 text-lg font-bold">🥉 Medalla Bronce</p>}
+
+      <div className="mt-6">
+        <Button onClick={onBack} className="bg-amber-600 text-white">
+          Volver al mapa
+        </Button>
+      </div>
+    </CardContent>
+  </Card>
+)}
+
+
       </div>
     </div>
   )

@@ -1,37 +1,12 @@
 "use client"
 export const dynamic = "force-dynamic"
-import { useRouter } from "next/navigation"
+
+import { useRouter, useParams } from "next/navigation"
 import LevelComponent from "@/components/LevelComponent"
-import { Level, UserData } from "@/lib/userTypes"
 import { useState } from "react"
+import { UserData } from "@/lib/userTypes"
+import { levelsMap } from "@/lib/levels/index"
 
-// 🔹 Definición de niveles de ejemplo (puedes moverlo a un lib si quieres)
-const communicationLevels: Level[] = [
-  {
-    id: 1,
-    title: "Primeros Encuentros",
-    type: "roleplay",
-    duration: 8,
-    xpReward: 50,
-    coinReward: 20,
-    isCompleted: false,
-    isUnlocked: true,
-    world: "selva",
-  },
-  {
-    id: 2,
-    title: "Escucha Activa",
-    type: "quiz",
-    duration: 6,
-    xpReward: 40,
-    coinReward: 15,
-    isCompleted: false,
-    isUnlocked: true,
-    world: "montana",
-  },
-]
-
-// 🔹 Datos iniciales del usuario (puedes reemplazar con Firestore si ya tienes auth)
 const initialUserData: UserData = {
   level: 1,
   xp: 0,
@@ -42,24 +17,19 @@ const initialUserData: UserData = {
   lastDailyChest: null,
   completedLevels: [],
   badges: [],
-  currentPet: "baby-capybara",
+  currentPet: "baby-capybara",   // 👈 usa el nombre correcto del tipo
   unlockedPets: ["baby-capybara"],
 }
 
-interface LevelPageProps {
-  params: {
-    id: string
-  }
-}
-
-export default function LevelPage({ params }: LevelPageProps) {
+export default function LevelPage() {
   const router = useRouter()
-  const levelId = Number.parseInt(params.id)
-  const level = communicationLevels.find((lvl) => lvl.id === levelId)
+  const params = useParams()
+  const levelId = Number(params?.id)
 
+  const levelData = levelsMap[levelId]
   const [userData, setUserData] = useState<UserData>(initialUserData)
 
-  if (!level) {
+  if (!levelData) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -80,14 +50,15 @@ export default function LevelPage({ params }: LevelPageProps) {
       ...prev,
       xp: prev.xp + xp,
       coins: prev.coins + coins,
-      completedLevels: [...prev.completedLevels, level.id],
+      completedLevels: [...prev.completedLevels, levelId],
       badges: [...prev.badges, ...badges],
     }))
-    router.push("/") // 👈 al completar, regresa al inicio (puedes cambiarlo a dashboard)
+    // 👇 si prefieres que se quede en el mapa de niveles en lugar de ir al inicio, cambia a "/dashboard"
+    
   }
 
   const handleBack = () => {
-    router.push("/") // 👈 salir sin completar
+     router.push("/") 
   }
 
   const handleLoseLife = () => {
@@ -99,11 +70,11 @@ export default function LevelPage({ params }: LevelPageProps) {
 
   return (
     <LevelComponent
-  levelId={level.id}             // antes tenías level={level}
-  userData={userData}
-  onComplete={handleComplete}
-  onBack={handleBack}
-  onLoseLife={handleLoseLife}
-/>
+      levelId={levelId}
+      userData={userData}
+      onComplete={handleComplete}
+      onBack={handleBack}
+      onLoseLife={handleLoseLife}
+    />
   )
 }

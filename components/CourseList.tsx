@@ -80,14 +80,27 @@ export default function CourseList({ levels, userData, onBack, onStartLevel }: C
         <div className="grid gap-8">
           {levels.map((level) => {
             const isCompleted = userData.completedLevels.includes(level.id)
+// 🔹 Detectar medalla obtenida
+const lastBadge = userData.badges.findLast?.(
+  (b: string) => ["diamante", "oro", "plata", "bronce"].includes(b)
+)
+
+let medalClass = ""
+if (lastBadge === "diamante") medalClass = "border-cyan-400 bg-cyan-50 animate-pulse-glow"
+else if (lastBadge === "oro") medalClass = "border-yellow-400 bg-yellow-50"
+else if (lastBadge === "plata") medalClass = "border-gray-400 bg-gray-50"
+else if (lastBadge === "bronce") medalClass = "border-orange-400 bg-orange-50"
 
             return (
               <Card
-                key={level.id}
-                className={`relative overflow-hidden rounded-2xl shadow-xl transition-all duration-300
-                ${level.isUnlocked ? "cursor-pointer hover:scale-[1.02]" : "opacity-50"}
-                ${isCompleted ? "border-green-500 bg-green-50" : "border-amber-200 bg-white/90 backdrop-blur-md"}`}
-              >
+  key={level.id}
+  onClick={() => {
+    if (level.isUnlocked) onStartLevel(level.id)
+  }}
+  className={`relative overflow-hidden rounded-2xl shadow-xl transition-all duration-300
+  ${level.isUnlocked ? "cursor-pointer hover:scale-[1.02]" : "opacity-50"}
+  ${isCompleted ? medalClass : "border-amber-200 bg-white/90 backdrop-blur-md"}`}
+>
                 <div
                   className="absolute inset-0 opacity-15"
                   style={{

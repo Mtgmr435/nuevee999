@@ -31,6 +31,7 @@ export default function LevelComponent({
   const playFail = useSound("/sounds/fail.mp3")
 
   // --- estados ---
+  const [closingMsg, setClosingMsg] = useState<string | null>(null)
   const [phase, setPhase] = useState<"intro" | "roleplay" | "quiz" | "end">("intro")
   const [currentIndex, setCurrentIndex] = useState(0)
   const [score, setScore] = useState(0)
@@ -39,17 +40,29 @@ export default function LevelComponent({
   const [isCorrect, setIsCorrect] = useState(false)
 
   // --- mascota equipada ---
-  const currentPet = pets.find((p) => p.id === (userData as any).equippedPet)
+ const currentPet = pets.find((p) => p.id === userData.currentPet)
 
-  const completeLevel = () => {
-    let medal = "bronce"
-    if (score >= 100) medal = "diamante"
-    else if (score >= 85) medal = "oro"
-    else if (score >= 50) medal = "plata"
 
-    onComplete(levelData.xpReward, levelData.coinReward, [medal])
-    setPhase("end")
+ const completeLevel = () => {
+  let medal = "bronce"
+  if (score >= 100) medal = "diamante"
+  else if (score >= 85) medal = "oro"
+  else if (score >= 50) medal = "plata"
+
+  // 🔹 Guardar progreso
+  onComplete(levelData.xpReward, levelData.coinReward, [medal])
+
+  // 🔹 Mostrar cierre de misión (si existe)
+  let closingMessage = null
+  if (levelData.roleplay?.closing) {
+    closingMessage = score >= 80
+      ? levelData.roleplay.closing.success
+      : levelData.roleplay.closing.fail
   }
+
+  setPhase("end")
+  setClosingMsg(closingMessage)
+}
 
   return (
     <div
@@ -242,33 +255,38 @@ export default function LevelComponent({
         )}
 
         {/* --- FIN DEL NIVEL --- */}
-        {phase === "end" && (
-  <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-6">
-    <div className="bg-white/95 rounded-2xl shadow-2xl max-w-lg w-full p-8 text-center animate-fadeIn">
-      <h2 className="text-3xl font-bold text-amber-800 mb-4">🎉 ¡Nivel completado!</h2>
-      <p className="text-amber-700 mb-6 text-lg">Tu puntaje final fue:</p>
-      <p className="text-4xl font-extrabold text-yellow-500 mb-6">{score} puntos</p>
+       {phase === "end" && (
+  <Card className="bg-white/80 border border-amber-200 p-6 text-center">
+    <CardContent>
+      <h2 className="text-2xl font-bold text-amber-800 mb-2">¡Misión completada!</h2>
+      <p className="text-amber-700 mb-4">Tu puntaje final fue {score} puntos.</p>
 
-      {/* Medalla grande */}
+      {/* Mensaje de cierre de misión */}
+      {closingMsg && (
+        <p className="mb-4 text-amber-900 font-medium">{closingMsg}</p>
+      )}
+
+      {/* Medalla */}
       {score >= 100 && (
-        <div className="text-cyan-600 text-5xl font-bold mb-4">🏅 Diamante</div>
+        <p className="text-cyan-600 text-lg font-bold">🏅 Medalla Diamante</p>
       )}
       {score < 100 && score >= 85 && (
-        <div className="text-yellow-500 text-5xl font-bold mb-4">🏅 Oro</div>
+        <p className="text-yellow-600 text-lg font-bold">🏅 Medalla Oro</p>
       )}
       {score < 85 && score >= 50 && (
-        <div className="text-gray-500 text-5xl font-bold mb-4">🥈 Plata</div>
+        <p className="text-gray-600 text-lg font-bold">🥈 Medalla Plata</p>
       )}
-      {score < 50 && (
-        <div className="text-orange-600 text-5xl font-bold mb-4">🥉 Bronce</div>
-      )}
+      {score < 50 && <p className="text-orange-700 text-lg font-bold">🥉 Medalla Bronce</p>}
 
-      <Button onClick={onBack} className="bg-amber-600 text-white px-6 py-2 mt-4">
-        Volver al mapa
-      </Button>
-    </div>
-  </div>
+      <div className="mt-6">
+        <Button onClick={onBack} className="bg-amber-600 text-white">
+          Volver al mapa
+        </Button>
+      </div>
+    </CardContent>
+  </Card>
 )}
+
 
       </div>
     </div>
