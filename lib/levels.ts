@@ -49,7 +49,7 @@ export const courses: Record<string, Level[]> = {
       coinReward: 25,
       isCompleted: false,
       isUnlocked: false,
-      world: "ciudad",
+      world: "mercado",
     },
   ],
 

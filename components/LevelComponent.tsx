@@ -45,9 +45,9 @@ export default function LevelComponent({
 
  const completeLevel = () => {
   let medal = "bronce"
-  if (score >= 100) medal = "diamante"
-  else if (score >= 85) medal = "oro"
-  else if (score >= 50) medal = "plata"
+  if (score >= 260) medal = "diamante"
+  else if (score >= 200) medal = "oro"
+  else if (score >= 100) medal = "plata"
 
   // 🔹 Guardar progreso
   onComplete(levelData.xpReward, levelData.coinReward, [medal])

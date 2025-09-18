@@ -17,6 +17,7 @@ import { allLevels } from "../lib/levels"
 import { updateStreak } from "@/lib/progress"
 import { useAuth } from "@/components/AuthProvider"
 import { useRouter } from "next/navigation"
+import CourseIntroModal from "@/components/CourseIntroModal"
 
 import {
   Trophy,
@@ -128,8 +129,8 @@ const courses: Course[] = [
 
 const communicationLevels: Level[] = [
   { id: 1, title: "Primeros Encuentros", type: "roleplay", duration: 8, xpReward: 50, coinReward: 20, isCompleted: false, isUnlocked: true, world: "campamento" },
-  { id: 2, title: "Escucha Activa", type: "quiz", duration: 6, xpReward: 40, coinReward: 15, isCompleted: false, isUnlocked: true, world: "montana" },
-  { id: 3, title: "Comunicacion no verbal", type: "roleplay", duration: 10, xpReward: 60, coinReward: 25, isCompleted: false, isUnlocked: true, world: "rio" },
+  { id: 2, title: "Escucha Activa", type: "quiz", duration: 6, xpReward: 40, coinReward: 15, isCompleted: false, isUnlocked: false, world: "montana" },
+  { id: 3, title: "Comunicacion no verbal", type: "roleplay", duration: 10, xpReward: 60, coinReward: 25, isCompleted: false, isUnlocked: false, world: "rio" },
   { id: 4, title: "Manejo de Conflictos", type: "quiz", duration: 12, xpReward: 80, coinReward: 30, isCompleted: false, isUnlocked: false, world: "mercado" },
   { id: 5, title: "Presentaciones Efectivas", type: "roleplay", duration: 15, xpReward: 100, coinReward: 40, isCompleted: false, isUnlocked: false, world: "selva" },
 ]
@@ -268,6 +269,8 @@ export default function Nu9veAcademy() {
   const [lifeTimer, setLifeTimer] = useState(0)
   const [currentLevel, setCurrentLevel] = useState<number | null>(null)
   const router = useRouter()
+  const [introCourseId, setIntroCourseId] = useState<string | null>(null)
+
   // ====== Persistencia local (hidratar + guardar) ======
   const hydratedRef = useRef(false)
   const lsDebounce = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -595,9 +598,25 @@ export default function Nu9veAcademy() {
                   return false
                 }).length,
               }))}
-              onCourseSelect={() => setCurrentView("course")}
+              onCourseSelect={(courseId: string) => setIntroCourseId(courseId)}
+              
             />
-          </div>
+                  {/* ...tu contenido normal de dashboard, curso o nivel... */}
+
+      {introCourseId && (
+        <CourseIntroModal
+          courseId={introCourseId}
+          onClose={() => setIntroCourseId(null)}
+          onStart={() => {
+            setIntroCourseId(null)
+            setCurrentView("course")
+          }}
+        />
+      )}
+    </div>
+  
+
+          
         </div>
       </div>
     )
