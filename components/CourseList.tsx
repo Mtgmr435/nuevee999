@@ -172,7 +172,7 @@ const medalClass = medal ? medalStyles[medal] : ""
     <img
     src={`/assets/medallas/medalla_${medal}.png`}
     alt={`Medalla ${medal}`}
-    className="w-10 h-10 object-contain"
+    className="w-19 h-19 object-contain"
   />
 )}
                         </div>
