@@ -12,3 +12,11 @@ export const levelsMap: Record<number, any> = {
   4: quizLevel4,
   5: roleplayLevel5,
 }
+export const allLevels = Object.entries(levelsMap).map(([id, lvl]) => ({
+  ...lvl,
+  id: Number(id),
+}))
+
+export function getNextLevelId(id: number) {
+  return levelsMap[id + 1] ? id + 1 : null
+}

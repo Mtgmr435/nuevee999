@@ -2,10 +2,14 @@
 export const dynamic = "force-dynamic"
 
 import { useRouter, useParams } from "next/navigation"
+import { useEffect, useState } from "react"
 import LevelComponent from "@/components/LevelComponent"
-import { useState } from "react"
 import { UserData } from "@/lib/userTypes"
 import { levelsMap } from "@/lib/levels/index"
+
+// 🔑 usa las mismas keys que page.tsx
+const LS_USER_KEY = "nu9ve_userData_v1"
+const LS_VIEW_KEY = "nu9ve_view_v1"
 
 const initialUserData: UserData = {
   level: 1,
@@ -17,7 +21,7 @@ const initialUserData: UserData = {
   lastDailyChest: null,
   completedLevels: [],
   badges: [],
-  currentPet: "baby-capybara",   // 👈 usa el nombre correcto del tipo
+  currentPet: "baby-capybara",
   unlockedPets: ["baby-capybara"],
 }
 
@@ -25,9 +29,20 @@ export default function LevelPage() {
   const router = useRouter()
   const params = useParams()
   const levelId = Number(params?.id)
-
   const levelData = levelsMap[levelId]
+
   const [userData, setUserData] = useState<UserData>(initialUserData)
+
+  // 💾 hidrata desde localStorage al entrar a la página de nivel
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(LS_USER_KEY)
+      if (raw) {
+        const fromLs = JSON.parse(raw) as Partial<UserData>
+        setUserData((prev) => ({ ...prev, ...fromLs }))
+      }
+    } catch {}
+  }, [])
 
   if (!levelData) {
     return (
@@ -45,20 +60,40 @@ export default function LevelPage() {
     )
   }
 
-  const handleComplete = (xp: number, coins: number, badges: string[]) => {
-    setUserData((prev) => ({
-      ...prev,
-      xp: prev.xp + xp,
-      coins: prev.coins + coins,
-      completedLevels: [...prev.completedLevels, levelId],
-      badges: [...prev.badges, ...badges],
-    }))
-    // 👇 si prefieres que se quede en el mapa de niveles en lugar de ir al inicio, cambia a "/dashboard"
-    
+  // ✅ guarda progreso + medalla en localStorage (fuente de verdad del mapa)
+  const handleCompleteLevel = (
+    levelId: number,
+    xp: number,
+    coins: number,
+    medal: string
+  ) => {
+    setUserData((prev) => {
+      const next: UserData = {
+        ...prev,
+        coins: prev.coins + coins,
+        xp: prev.xp + xp,
+        completedLevels: Array.from(new Set([...prev.completedLevels, levelId])),
+        badges: [
+          ...prev.badges.filter((b) => b.levelId !== levelId),
+          { levelId, medal },
+        ],
+      }
+      try {
+        localStorage.setItem(LS_USER_KEY, JSON.stringify(next))
+        localStorage.setItem(LS_VIEW_KEY, "course") // que el home abra el mapa/curso
+      } catch {}
+      return next
+    })
+    // 👇 NO hagas router.push aquí; deja que el botón "Volver al mapa" lo haga.
   }
 
   const handleBack = () => {
-     router.push("/") 
+    // por si el usuario vuelve sin completar, persistimos igualmente lo último
+    try {
+      localStorage.setItem(LS_USER_KEY, JSON.stringify(userData))
+      localStorage.setItem(LS_VIEW_KEY, "course")
+    } catch {}
+    router.push("/")
   }
 
   const handleLoseLife = () => {
@@ -72,7 +107,7 @@ export default function LevelPage() {
     <LevelComponent
       levelId={levelId}
       userData={userData}
-      onComplete={handleComplete}
+      onComplete={handleCompleteLevel}
       onBack={handleBack}
       onLoseLife={handleLoseLife}
     />

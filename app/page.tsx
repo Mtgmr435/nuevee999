@@ -13,10 +13,11 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import LoginButton from "@/components/LoginButton"
 import Dashboard from "@/components/Dashboard"
-import { allLevels } from "../lib/levels"
+import { allLevels } from "@/lib/levels/index"
 import { updateStreak } from "@/lib/progress"
 import { useAuth } from "@/components/AuthProvider"
 import { useRouter } from "next/navigation"
+import CourseIntroModal from "@/components/CourseIntroModal"
 
 import {
   Trophy,
@@ -76,8 +77,8 @@ const initialUserData: UserData = {
 const courses: Course[] = [
   {
     id: "communication-v1",
-    title: "Comunicación Efectiva",
-    description: "Domina el arte de comunicarte con confianza y empatía",
+    title: "Empatia",
+    description: "Entrenamiento: La aventura de la empatía.",
     icon: "💬",
     color: "from-amber-400 to-orange-500",
     totalLevels: 12,
@@ -128,8 +129,8 @@ const courses: Course[] = [
 
 const communicationLevels: Level[] = [
   { id: 1, title: "Primeros Encuentros", type: "roleplay", duration: 8, xpReward: 50, coinReward: 20, isCompleted: false, isUnlocked: true, world: "campamento" },
-  { id: 2, title: "Escucha Activa", type: "quiz", duration: 6, xpReward: 40, coinReward: 15, isCompleted: false, isUnlocked: true, world: "montana" },
-  { id: 3, title: "Comunicacion no verbal", type: "roleplay", duration: 10, xpReward: 60, coinReward: 25, isCompleted: false, isUnlocked: true, world: "rio" },
+  { id: 2, title: "Escucha Activa", type: "quiz", duration: 6, xpReward: 40, coinReward: 15, isCompleted: false, isUnlocked: false, world: "montana" },
+  { id: 3, title: "Comunicacion no verbal", type: "roleplay", duration: 10, xpReward: 60, coinReward: 25, isCompleted: false, isUnlocked: false, world: "rio" },
   { id: 4, title: "Manejo de Conflictos", type: "quiz", duration: 12, xpReward: 80, coinReward: 30, isCompleted: false, isUnlocked: false, world: "mercado" },
   { id: 5, title: "Presentaciones Efectivas", type: "roleplay", duration: 15, xpReward: 100, coinReward: 40, isCompleted: false, isUnlocked: false, world: "selva" },
 ]
@@ -268,6 +269,8 @@ export default function Nu9veAcademy() {
   const [lifeTimer, setLifeTimer] = useState(0)
   const [currentLevel, setCurrentLevel] = useState<number | null>(null)
   const router = useRouter()
+  const [introCourseId, setIntroCourseId] = useState<string | null>(null)
+
   // ====== Persistencia local (hidratar + guardar) ======
   const hydratedRef = useRef(false)
   const lsDebounce = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -358,6 +361,7 @@ export default function Nu9veAcademy() {
         gems: prev.gems + rewards.gems,
         xp: prev.xp + rewards.xp,
         lastDailyChest: new Date().toDateString(),
+        
       }))
       setShowDailyChest(false)
       setChestAnimation(false)
@@ -376,19 +380,28 @@ export default function Nu9veAcademy() {
   const loseLife = () => setUserData((prev) => ({ ...prev, lives: Math.max(0, prev.lives - 1) }))
 
   // ✅ completar nivel
-  const handleCompleteLevel = (levelId: number, xp: number, coins: number, badges: string[]) => {
-    setUserData((prev) => {
-      const newCompleted = prev.completedLevels.includes(levelId)
-        ? prev.completedLevels
-        : [...prev.completedLevels, levelId]
-      return { ...prev, xp: prev.xp + xp, coins: prev.coins + coins, completedLevels: newCompleted }
-    })
-    const nextLevelIndex = communicationLevels.findIndex((level) => level.id === levelId + 1)
-    if (nextLevelIndex !== -1) {
-      communicationLevels[nextLevelIndex].isUnlocked = true
-    }
-    setCurrentView("course")
+  const handleCompleteLevel = (levelId: number, xp: number, coins: number, medal: string) => {
+  setUserData(prev => ({
+  ...prev,
+  completedLevels: Array.from(new Set([...prev.completedLevels, levelId])),
+  badges: [
+    ...prev.badges.filter(b => b.levelId !== levelId),
+    { levelId, medal }, // 👈 Asegúrate que esto se guarda
+  ],
+  coins: prev.coins + coins,
+  xp: prev.xp + xp,
+}))
+
+   // 🔓 desbloquea siguiente nivel
+  const nextLevelIndex = communicationLevels.findIndex(
+    (level) => level.id === levelId + 1
+  )
+  if (nextLevelIndex !== -1) {
+    communicationLevels[nextLevelIndex].isUnlocked = true
   }
+
+  setCurrentView("course")
+}
 
   // ==========================
   // 🔄 SINCRONIZACIÓN FIRESTORE
@@ -595,9 +608,25 @@ export default function Nu9veAcademy() {
                   return false
                 }).length,
               }))}
-              onCourseSelect={() => setCurrentView("course")}
+              onCourseSelect={(courseId: string) => setIntroCourseId(courseId)}
+              
             />
-          </div>
+                  {/* ...tu contenido normal de dashboard, curso o nivel... */}
+
+      {introCourseId && (
+        <CourseIntroModal
+          courseId={introCourseId}
+          onClose={() => setIntroCourseId(null)}
+          onStart={() => {
+            setIntroCourseId(null)
+            setCurrentView("course")
+          }}
+        />
+      )}
+    </div>
+  
+
+          
         </div>
       </div>
     )
@@ -794,11 +823,15 @@ export default function Nu9veAcademy() {
             {currentView === "dashboard" && renderDashboard()}
             {currentView === "course" && (
               <CourseList
-                levels={communicationLevels}
-                userData={userData}
-                onBack={() => setCurrentView("dashboard")}
-                onStartLevel={(id) => startLevel(id)}
-              />
+  levels={communicationLevels.map(l => {
+    const badge = userData.badges.find(b => b.levelId === l.id)
+    return { ...l, medal: badge?.medal }
+  })}
+  userData={userData}
+  onBack={() => setCurrentView("dashboard")}
+  onStartLevel={(id) => startLevel(id)}
+/>
+
             )}
             {currentView === "shop" && renderShop()}
             {currentView === "profile" && renderProfile()}
@@ -806,7 +839,7 @@ export default function Nu9veAcademy() {
               <LevelComponent
                 levelId={allLevels[currentLevel - 1].id}
                 userData={userData}
-                onComplete={(xp, coins, badges) => handleCompleteLevel(currentLevel, xp, coins, badges)}
+                onComplete={handleCompleteLevel}
                 onBack={() => setCurrentView("course")}
                 onLoseLife={loseLife}
               />

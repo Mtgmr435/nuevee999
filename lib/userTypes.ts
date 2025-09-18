@@ -7,7 +7,7 @@ export interface UserData {
   maxLives: number
   lastDailyChest: string | null
   completedLevels: number[]
-  badges: string[]
+  badges: { levelId: number; medal: string }[]
   currentPet: string
   unlockedPets: string[]
   equippedPet?: string 
