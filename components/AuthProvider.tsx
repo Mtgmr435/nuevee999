@@ -1,68 +1,40 @@
 // components/AuthProvider.tsx
-"use client";
+"use client"
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import {
-  getAuth,
-  onAuthStateChanged,
-  getRedirectResult,
-  setPersistence,
-  browserLocalPersistence,
-  browserSessionPersistence,
-  inMemoryPersistence,
-  User,
-} from "firebase/auth";
-import { app } from "@/lib/firebase";
+import { createContext, useContext, useEffect, useMemo, useState } from "react"
+import type { User } from "@supabase/supabase-js"
+import { supabase } from "@/lib/supabase"
 
-type AuthCtx = { user: User | null; loading: boolean; error?: string | null };
-const Ctx = createContext<AuthCtx>({ user: null, loading: true });
+type AuthCtx = { user: User | null; loading: boolean; error?: string | null }
+const Ctx = createContext<AuthCtx>({ user: null, loading: true })
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const auth = getAuth(app); // MISMA instancia
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    let unsub = () => { };
-    (async () => {
-      try {
-        // Persistencia con fallback (Safari / WebViews)
-        try {
-          await setPersistence(auth, browserLocalPersistence);
-        } catch {
-          try {
-            await setPersistence(auth, browserSessionPersistence);
-          } catch {
-            await setPersistence(auth, inMemoryPersistence);
-          }
-        }
-
-        // Por si vienes de signInWithRedirect
-        try {
-          await getRedirectResult(auth);
-        } catch { }
-
-        unsub = onAuthStateChanged(auth, (fbUser) => {
-          setUser(fbUser);
-          setLoading(false);
-        });
-      } catch (e) {
-        console.warn("AuthProvider init error", e);
-        setLoading(false);
-      }
-    })();
-
+    let mounted = true
+    const init = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!mounted) return
+      setUser(session?.user ?? null)
+      setLoading(false)
+    }
+    init()
+    const { data: sub } = supabase.auth.onAuthStateChange((_ev, session) => {
+      setUser(session?.user ?? null)
+      setLoading(false)
+    })
     return () => {
-      try {
-        unsub && unsub();
-      } catch { }
-    };
-  }, [auth]);
+      mounted = false
+      sub?.subscription?.unsubscribe()
+    }
+  }, [])
 
-  const value = useMemo(() => ({ user, loading, error: null }), [user, loading]);
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+  const value = useMemo(() => ({ user, loading, error: null }), [user, loading])
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
 
 export function useAuth() {
-  return useContext(Ctx);
+  return useContext(Ctx)
 }
